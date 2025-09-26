@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+.pnpm-debug.log*
+
+# Next.js
+.next/
+out/
+
+# Production
+build/
+dist/
+
+# Environment variables
+.env
+.env*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Testing
+test-results/
+playwright-report/
+coverage/
+
+# Temporary files
+*.log
+*.tmp
+cookies.txt
+
+# Claude settings (keep local only)
+.claude/settings.local.json
+
+# Build artifacts
+*.tsbuildinfo

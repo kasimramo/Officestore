@@ -1,0 +1,362 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// NextAuth.js required models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Core application models
+enum OrgRole {
+  ADMIN
+  PROCUREMENT
+  APPROVER_L1
+  APPROVER_L2
+  STAFF
+}
+
+enum AreaType {
+  PANTRY
+  HOUSEKEEPING
+  STATIONERY
+  OTHER
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  ORDERED
+  DELIVERED
+}
+
+enum RequestType {
+  REGULAR
+  URGENT
+  RECURRING
+}
+
+enum AttachmentKind {
+  PHOTO
+  RECEIPT
+  OTHER
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // NextAuth relations
+  accounts Account[]
+  sessions Session[]
+
+  // App relations
+  credentials          UserCredential?
+  memberships          Membership[]
+  createdRequests      Request[]           @relation("RequestCreator")
+  approvalDecisions    ApprovalDecision[]
+  createdAttachments   Attachment[]
+  receivingLogs        ReceivingLog[]
+  createdCatalogueItems CatalogueItem[]
+  catalogueVersions    CatalogueVersion[]
+  userAgreements       UserAgreement[]
+  auditLogs            AuditLog[]
+  inChargeAreas        Area[]
+
+  @@map("user")
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  // Relations
+  memberships            Membership[]
+  sites                  Site[]
+  areas                  Area[]
+  catalogueItems         CatalogueItem[]
+  catalogueSiteOverrides CatalogueSiteOverride[]
+  catalogueVersions      CatalogueVersion[]
+  requests               Request[]
+  requestItems           RequestItem[]
+  approvalDecisions      ApprovalDecision[]
+  attachments            Attachment[]
+  receivingLogs          ReceivingLog[]
+}
+
+model Membership {
+  id     String  @id @default(cuid())
+  orgId  String
+  userId String
+  role   OrgRole
+
+  // Relations
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, userId])
+}
+
+model Site {
+  id       String  @id @default(cuid())
+  orgId    String
+  name     String
+  timezone String  @default("UTC")
+  locale   String  @default("en")
+  isActive Boolean @default(true)
+
+  // Relations
+  organization           Organization            @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  areas                  Area[]
+  requests               Request[]
+  catalogueSiteOverrides CatalogueSiteOverride[]
+
+  @@unique([orgId, name])
+}
+
+model Area {
+  id             String    @id @default(cuid())
+  siteId         String
+  orgId          String
+  name           String
+  type           AreaType  @default(PANTRY)
+  inChargeUserId String?
+  isActive       Boolean   @default(true)
+
+  // Relations
+  site         Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  inChargeUser User?        @relation(fields: [inChargeUserId], references: [id])
+  requests     Request[]
+
+  @@unique([siteId, name])
+}
+
+model CatalogueItem {
+  id               String   @id @default(cuid())
+  orgId            String
+  sku              String
+  vendorSku        String?
+  name             String
+  category         String
+  unit             String
+  packSize         String?
+  imageUrl         String?
+  active           Boolean  @default(true)
+  // Price fields for SMB budgeting
+  unitPrice        Decimal? @db.Decimal(10, 2)
+  currency         String   @default("USD")
+  showPriceToUsers Boolean  @default(false)
+  createdBy        String?
+  createdAt        DateTime @default(now())
+
+  // Relations
+  organization     Organization            @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  creator          User?                   @relation(fields: [createdBy], references: [id])
+  siteOverrides    CatalogueSiteOverride[]
+  versions         CatalogueVersion[]
+  requestItems     RequestItem[]
+
+  @@unique([orgId, sku])
+}
+
+model CatalogueSiteOverride {
+  id            String @id @default(cuid())
+  itemId        String
+  orgId         String
+  siteId        String
+  minStock      Int?
+  reorderPoint  Int?
+  reorderQty    Int?
+  leadTimeDays  Int?
+
+  // Relations
+  item         CatalogueItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  organization Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  site         Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, siteId])
+}
+
+model CatalogueVersion {
+  id        String   @id @default(cuid())
+  itemId    String
+  orgId     String
+  actorId   String?
+  diffJson  Json
+  createdAt DateTime @default(now())
+
+  // Relations
+  item         CatalogueItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  organization Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  actor        User?         @relation(fields: [actorId], references: [id])
+}
+
+model Request {
+  id        String        @id @default(cuid())
+  orgId     String
+  siteId    String
+  areaId    String
+  type      RequestType   @default(REGULAR)
+  status    RequestStatus @default(PENDING)
+  createdBy String
+  createdAt DateTime      @default(now())
+
+  // Relations
+  organization      Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  site              Site               @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  area              Area               @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  creator           User               @relation("RequestCreator", fields: [createdBy], references: [id])
+  items             RequestItem[]
+  approvalDecisions ApprovalDecision[]
+  attachments       Attachment[]
+  receivingLogs     ReceivingLog[]
+}
+
+model RequestItem {
+  id                String @id @default(cuid())
+  requestId         String
+  orgId             String
+  catalogueItemId   String
+  quantity          Int
+  notes             String?
+
+  // Relations
+  request         Request         @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  organization    Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  catalogueItem   CatalogueItem   @relation(fields: [catalogueItemId], references: [id])
+  receivingLogs   ReceivingLog[]
+}
+
+model ApprovalDecision {
+  id          String   @id @default(cuid())
+  requestId   String
+  orgId       String
+  approverId  String
+  decision    String // 'APPROVE' | 'REJECT'
+  comment     String?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  request      Request      @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  approver     User         @relation(fields: [approverId], references: [id])
+}
+
+model Attachment {
+  id        String         @id @default(cuid())
+  orgId     String
+  requestId String
+  url       String
+  kind      AttachmentKind
+  createdBy String
+  createdAt DateTime       @default(now())
+
+  // Relations
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  request      Request      @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  creator      User         @relation(fields: [createdBy], references: [id])
+}
+
+model ReceivingLog {
+  id            String @id @default(cuid())
+  orgId         String
+  requestId     String
+  requestItemId String
+  receivedQty   Int
+  notes         String?
+  createdBy     String
+  createdAt     DateTime @default(now())
+
+  // Relations
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  request      Request      @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  requestItem  RequestItem  @relation(fields: [requestItemId], references: [id], onDelete: Cascade)
+  creator      User         @relation(fields: [createdBy], references: [id])
+}
+
+// Authentication and security
+model UserCredential {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  hashedPassword String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_credential")
+}
+
+// Audit and compliance
+model UserAgreement {
+  id           String   @id @default(cuid())
+  userId       String
+  termsVersion String
+  acceptedAt   DateTime @default(now())
+  ip           String?
+  userAgent    String?
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  targetType String
+  targetId   String?
+  meta       Json?
+  createdAt  DateTime @default(now())
+
+  // Relations
+  actor User? @relation(fields: [actorId], references: [id])
+}
+
