@@ -2,9 +2,16 @@
 
 ## Project Information
 - **Project Name**: OfficeStore (Pantry & Office Supplies Management System)
-- **Development Server**: http://localhost:3002
+- **Development Server**: http://localhost:3002 (client) + http://localhost:3001 (API server)
 - **Database**: PostgreSQL on Railway
-- **Stack**: Next.js 14, TypeScript, Tailwind CSS, Prisma ORM, NextAuth.js
+- **Stack**: Vite React SPA + Express.js API + Drizzle ORM + TypeScript + Tailwind CSS
+
+## 🏗️ **New Architecture (Monorepo)**
+- **Workspace Structure**: pnpm workspaces with apps/ and packages/
+- **Frontend**: Vite + React 19 + React Router 7 + TanStack Query
+- **Backend**: Express.js 5 + Drizzle ORM + postgres-js + Redis
+- **Authentication**: JWT access + refresh tokens + Redis session cache
+- **UI Components**: Radix UI + Tailwind CSS for enterprise-grade interface
 
 ## Development Guidelines
 
@@ -21,13 +28,24 @@
 ### Required Directory Structure
 
 ```
-DEV-Files/
-├── database/
-│   └── scripts/           # All .cjs/.sql files for database operations
-├── testing/               # Test files and testing utilities
-├── development/
-│   └── utilities/         # Helper scripts, CSV files, data utilities
-└── documentation/         # ALL .md files except README.md
+officestore/
+├── apps/
+│   ├── client/           # Vite + React SPA
+│   └── server/           # Express.js API server
+├── packages/
+│   ├── shared/           # Types, schemas, utils
+│   ├── ui/              # Reusable UI components
+│   └── config/          # Shared config (ESLint, TS, etc.)
+├── tools/
+│   ├── database/        # Migration & seed scripts
+│   └── codegen/         # API client generation
+└── DEV-Files/
+    ├── database/
+    │   └── scripts/      # All .cjs/.sql files for database operations
+    ├── testing/          # Test files and testing utilities
+    ├── development/
+    │   └── utilities/    # Helper scripts, CSV files, data utilities
+    └── documentation/    # ALL .md files except README.md
 ```
 
 ### File Path Requirements
@@ -50,20 +68,25 @@ DEV-Files/
 
 ## Development Server Management
 
-### Port Consistency
-- **ALWAYS use port 3002** for development server
-- Use `PORT=3002 npm run dev` to maintain consistency
-- Kill other processes if needed: `npx kill-port 3000 3001 3003 3004 3005`
+### Port Consistency (Monorepo)
+- **API Server**: http://localhost:3001 (Express.js)
+- **Client SPA**: http://localhost:3002 (Vite dev server)
+- Use `pnpm dev` from root to start both servers concurrently
 
 ### Server Commands
 ```bash
-# Start server on port 3002
-PORT=3002 npm run dev
+# Start both client and server (from root)
+pnpm dev
 
-# Kill processes on other ports for consistency
-npx kill-port 3000 3001 3003 3004 3005
+# Start individual services
+pnpm --filter client dev    # Client on :3002
+pnpm --filter server dev    # Server on :3001
+
+# Kill processes if needed
+npx kill-port 3001 3002 3000 3003 3004 3005
 
 # Check port usage
+netstat -ano | findstr :3001
 netstat -ano | findstr :3002
 ```
 
@@ -88,38 +111,44 @@ netstat -ano | findstr :3002
 - **Environment**: Development database access only
 
 ### Schema Management
-- Use Prisma migrations for schema changes
+- Use Drizzle ORM migrations for schema changes
+- Database schema maintained in `apps/server/src/db/schema.ts`
+- Migration files in `tools/database/migrations/`
 - Create manual scripts in `DEV-Files/database/scripts/` for production deployment
 - All database operations logged for audit compliance
 
-## Current Implementation Status
+## Implementation Status (Rebuild Phase)
 
-### ✅ Completed Features
-- User authentication (NextAuth.js)
+### 🎯 **Target Features (From Legacy)**
+- User authentication with JWT tokens
 - Organization management with auto-generated slugs
 - Site and area creation/management
 - Dashboard with statistics and recent activity
 - Catalogue item management
-- Professional UI with Tailwind CSS
+- Professional UI with Radix + Tailwind CSS
 - Database schema with RLS policies
 - Organization setup workflow
+- Request workflow (submit → approve → fulfill)
 
-### 🔧 Architecture
-- **Frontend**: Next.js 14 with App Router, TypeScript, Tailwind CSS
-- **Backend**: Next.js API routes with Prisma ORM
-- **Database**: PostgreSQL with Row-Level Security
-- **Authentication**: NextAuth.js with credentials provider
-- **Security**: Input validation, audit logging, rate limiting
+### 🏗️ **New Architecture Stack**
+- **Frontend**: Vite + React 19 + React Router 7 + TanStack Query
+- **Backend**: Express.js 5 + Drizzle ORM + postgres-js
+- **Database**: PostgreSQL with Row-Level Security (existing schema)
+- **Authentication**: JWT access + refresh tokens + Redis session cache
+- **Caching**: Redis for session management and API caching
+- **UI**: Radix UI primitives + Tailwind CSS
+- **Build**: Turborepo for monorepo orchestration
+- **Testing**: Vitest + Playwright + MSW
 
-## Development Workflow
+## Development Workflow (Monorepo)
 
-1. Always check current server status: http://localhost:3002
-2. Create all development files in appropriate `DEV-Files/` subdirectories
-3. Use Prisma for database operations
-4. Follow TypeScript best practices
-5. Maintain audit logs for all operations
-6. Test organization setup functionality regularly
-7. Keep documentation in `DEV-Files/documentation/` only
+1. **Start Development**: `pnpm dev` (starts both client:3002 and server:3001)
+2. **API Development**: Work in `apps/server/` with Express routes
+3. **Frontend Development**: Work in `apps/client/` with React components
+4. **Shared Code**: Use `packages/shared/` for types, schemas, utils
+5. **Database**: Use Drizzle ORM with existing PostgreSQL schema
+6. **Keep Documentation**: All .md files in `DEV-Files/documentation/` only
+7. **Performance Target**: <100ms API response times
 
 ## Important Notes
 
@@ -130,5 +159,7 @@ netstat -ano | findstr :3002
 ⚠️ **Test changes in development environment before production**
 
 ---
-*Last Updated: 2025-09-24*
-*Development Server: http://localhost:3002*
+*Last Updated: 2025-09-27*
+*Client SPA: http://localhost:3002*
+*API Server: http://localhost:3001*
+*Architecture: Vite + React SPA + Express.js API (Monorepo)*

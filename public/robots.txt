@@ -1,9 +1,0 @@
-# robots.txt for Pantry App
-User-agent: *
-Disallow: /dashboard
-Disallow: /admin
-Disallow: /api
-Disallow: /auth
-Allow: /
-
-Sitemap: http://localhost:3001/sitemap.xml

@@ -1,27 +1,60 @@
 # Dependencies
 node_modules/
-.pnpm-debug.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# Next.js
+# Build outputs
+dist/
+build/
 .next/
+.turbo/
+.nitro/
+.output/
+.vite/
+.cache/
 out/
 
-# Production
-build/
-dist/
-
 # Environment variables
-.env
-.env*.local
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# IDE
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Testing
+test-results/
+playwright-report/
+coverage/
+
+# IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# OS
+# OS files
 .DS_Store
 .DS_Store?
 ._*
@@ -30,10 +63,16 @@ dist/
 ehthumbs.db
 Thumbs.db
 
-# Testing
-test-results/
-playwright-report/
-coverage/
+# Yarn v2
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# Database backups
+*.backup
+*.sql.backup
 
 # Temporary files
 *.log
@@ -41,7 +80,10 @@ coverage/
 cookies.txt
 
 # Claude settings (keep local only)
-.claude/settings.local.json
+.claude/
 
-# Build artifacts
-*.tsbuildinfo
+# Development files (as per development guidelines)
+DEV-Files/
+
+# Environment variables
+.env

@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base tweaks for a clean SaaS look */
+:root {
+  --header-height: 64px;
+}
+
+body {
+  color: #0f172a;
+}
+
+.container-max {
+  max-width: 1200px;
+}
+
