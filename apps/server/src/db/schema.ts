@@ -7,11 +7,17 @@ export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   username: text('username').notNull().unique(),
   email: text('email').unique(),
-  password_hash: text('password_hash').notNull(),
+  password_hash: text('password_hash'), // Optional for OAuth users
   first_name: text('first_name').notNull(),
   last_name: text('last_name').notNull(),
   role: text('role').$type<UserRole>().notNull(),
   organization_id: uuid('organization_id'),
+  // Google OAuth fields
+  google_id: text('google_id').unique(),
+  google_email: text('google_email'),
+  google_name: text('google_name'),
+  google_picture: text('google_picture'),
+  auth_provider: text('auth_provider').notNull().default('local'), // 'local' or 'google'
   is_active: boolean('is_active').notNull().default(true),
   email_verified: boolean('email_verified').notNull().default(false),
   force_password_change: boolean('force_password_change').notNull().default(false),
@@ -62,7 +68,8 @@ export const catalogueItems = pgTable('catalogue_items', {
   organization_id: uuid('organization_id').notNull(),
   name: text('name').notNull(),
   description: text('description'),
-  category: text('category'),
+  category: text('category'), // Legacy field
+  category_id: uuid('category_id'), // New category reference
   unit: text('unit').notNull(),
   cost_per_unit: numeric('cost_per_unit', { precision: 10, scale: 2 }),
   supplier: text('supplier'),
@@ -136,6 +143,69 @@ export const userInvitations = pgTable('user_invitations', {
   accepted: boolean('accepted').notNull().default(false),
   expires_at: timestamp('expires_at').notNull(),
   accepted_at: timestamp('accepted_at'),
+  created_at: timestamp('created_at').notNull().defaultNow(),
+  updated_at: timestamp('updated_at').notNull().defaultNow()
+});
+
+// End users table (staff users created by admins)
+export const endUsers = pgTable('end_users', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organization_id: uuid('organization_id').notNull(),
+  username: text('username').notNull(),
+  password_hash: text('password_hash').notNull(),
+  email: text('email'),
+  first_name: text('first_name').notNull(),
+  last_name: text('last_name').notNull(),
+  role: text('role').$type<'STAFF' | 'PROCUREMENT' | 'APPROVER_L1' | 'APPROVER_L2'>().notNull(),
+  is_active: boolean('is_active').notNull().default(true),
+  force_password_change: boolean('force_password_change').notNull().default(true),
+  created_by: uuid('created_by').notNull(),
+  created_at: timestamp('created_at').notNull().defaultNow(),
+  updated_at: timestamp('updated_at').notNull().defaultNow(),
+  last_login_at: timestamp('last_login_at')
+});
+
+// Categories table
+export const categories = pgTable('categories', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organization_id: uuid('organization_id').notNull(),
+  name: text('name').notNull(),
+  description: text('description'),
+  is_active: boolean('is_active').notNull().default(true),
+  created_at: timestamp('created_at').notNull().defaultNow(),
+  updated_at: timestamp('updated_at').notNull().defaultNow()
+});
+
+// End user sites mapping
+export const endUserSites = pgTable('end_user_sites', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  end_user_id: uuid('end_user_id').notNull(),
+  site_id: uuid('site_id').notNull(),
+  created_at: timestamp('created_at').notNull().defaultNow()
+});
+
+// End user areas mapping
+export const endUserAreas = pgTable('end_user_areas', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  end_user_id: uuid('end_user_id').notNull(),
+  area_id: uuid('area_id').notNull(),
+  created_at: timestamp('created_at').notNull().defaultNow()
+});
+
+// End user categories mapping
+export const endUserCategories = pgTable('end_user_categories', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  end_user_id: uuid('end_user_id').notNull(),
+  category_id: uuid('category_id').notNull(),
+  created_at: timestamp('created_at').notNull().defaultNow()
+});
+
+// End user sessions table
+export const endUserSessions = pgTable('end_user_sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  end_user_id: uuid('end_user_id').notNull(),
+  refresh_token: text('refresh_token').notNull(),
+  expires_at: timestamp('expires_at').notNull(),
   created_at: timestamp('created_at').notNull().defaultNow(),
   updated_at: timestamp('updated_at').notNull().defaultNow()
 });

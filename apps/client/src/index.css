@@ -52,6 +52,9 @@
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
+
+  /* Layout */
+  --header-height: 4rem;
 }
 
 @layer base {
@@ -151,5 +154,10 @@
   /* Modern hover states */
   .hover-lift {
     @apply transition-transform duration-200 ease-in-out hover:-translate-y-0.5 hover:shadow-lg;
+  }
+
+  /* Layout utilities */
+  .container-max {
+    @apply max-w-7xl;
   }
 }

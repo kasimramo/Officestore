@@ -441,6 +441,113 @@ export class AuthService {
       return userWithoutPassword;
     });
   }
+
+  // Google OAuth methods
+  async findUserByGoogleId(googleId: string): Promise<Omit<User, 'password_hash'> | null> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.google_id, googleId), eq(users.is_active, true)))
+      .limit(1);
+
+    if (!user) return null;
+
+    const { password_hash, ...userWithoutPassword } = user;
+    return userWithoutPassword;
+  }
+
+  async findUserByEmail(email: string): Promise<Omit<User, 'password_hash'> | null> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.email, email), eq(users.is_active, true)))
+      .limit(1);
+
+    if (!user) return null;
+
+    const { password_hash, ...userWithoutPassword } = user;
+    return userWithoutPassword;
+  }
+
+  async linkGoogleAccount(userId: string, googleId: string): Promise<Omit<User, 'password_hash'>> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        google_id: googleId,
+        updated_at: new Date()
+      })
+      .where(eq(users.id, userId))
+      .returning();
+
+    const { password_hash, ...userWithoutPassword } = updatedUser;
+    return userWithoutPassword;
+  }
+
+  async createGoogleUser(userData: {
+    googleId: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    avatar?: string;
+    provider: string;
+  }): Promise<Omit<User, 'password_hash'>> {
+    // For Google users, we'll generate a random password they'll never use
+    const randomPassword = Math.random().toString(36).slice(-12);
+    const hashedPassword = await hashPassword(randomPassword);
+
+    const [newUser] = await db
+      .insert(users)
+      .values({
+        username: userData.email,
+        email: userData.email,
+        password_hash: hashedPassword,
+        first_name: userData.firstName,
+        last_name: userData.lastName,
+        google_id: userData.googleId,
+        avatar_url: userData.avatar,
+        role: UserRole.STAFF, // New Google users start as staff
+        is_active: true,
+        email_verified: true, // Google accounts are pre-verified
+        provider: userData.provider,
+        terms_accepted: false // This will be checked for T&C flow
+      })
+      .returning();
+
+    const { password_hash, ...userWithoutPassword } = newUser;
+    return userWithoutPassword;
+  }
+
+  async acceptTermsAndConditions(userId: string): Promise<void> {
+    await db
+      .update(users)
+      .set({
+        terms_accepted: true,
+        terms_accepted_at: new Date(),
+        updated_at: new Date()
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async googleSignIn(user: Omit<User, 'password_hash'>): Promise<{ user: Omit<User, 'password_hash'>; tokens: AuthTokens; needsTermsAcceptance?: boolean }> {
+    const userPayload: TokenPayload = {
+      userId: user.id,
+      username: user.username,
+      email: user.email || undefined,
+      role: user.role,
+      organizationId: user.organization_id || undefined
+    };
+
+    const tokens = generateTokenPair(userPayload);
+
+    // Store refresh token
+    await this.storeRefreshToken(user.id, tokens.refreshToken);
+
+    return {
+      user,
+      tokens,
+      needsTermsAcceptance: !user.terms_accepted
+    };
+  }
 }
 
 export const authService = new AuthService();

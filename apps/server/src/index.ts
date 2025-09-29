@@ -7,6 +7,8 @@ import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import { connectRedis } from './config/redis.js';
 import { authRouter } from './routes/auth.js';
+import { sitesRouter } from './routes/sites.js';
+import { areasRouter } from './routes/areas.js';
 
 // Load environment variables from root .env file
 dotenv.config({ path: '../../.env' });
@@ -73,10 +75,12 @@ app.use('/api/auth', (req, res, next) => {
 
 app.use('/api/auth', authRouter);
 
+// Sites and Areas routes
+app.use('/api/sites', sitesRouter);
+app.use('/api/areas', areasRouter);
+
 // TODO: Add other API routes here
 // app.use('/api/organizations', organizationsRouter);
-// app.use('/api/sites', sitesRouter);
-// app.use('/api/areas', areasRouter);
 // app.use('/api/catalogue', catalogueRouter);
 // app.use('/api/requests', requestsRouter);
 

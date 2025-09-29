@@ -73,22 +73,30 @@ officestore/
 - **Client SPA**: http://localhost:3002 (Vite dev server)
 - Use `pnpm dev` from root to start both servers concurrently
 
-### Server Commands
+### 🚨 MANDATORY DEV SERVER COMMANDS (NO TRIAL & ERROR)
+
+**ALWAYS check package.json first, then use these exact commands:**
+
 ```bash
-# Start both client and server (from root)
-pnpm dev
+# 1. PREFERRED METHOD: Use npm (always available)
+npm run dev                  # Starts both client:3002 + server:3001
 
-# Start individual services
-pnpm --filter client dev    # Client on :3002
-pnpm --filter server dev    # Server on :3001
+# 2. ALTERNATIVE: Only if pnpm is confirmed available
+pnpm dev                     # Same as above
 
-# Kill processes if needed
+# 3. INDIVIDUAL SERVICES (if needed)
+npm run --workspace=apps/client dev    # Client only :3002
+npm run --workspace=apps/server dev    # Server only :3001
+
+# 4. KILL PROCESSES (if ports busy)
 npx kill-port 3001 3002 3000 3003 3004 3005
 
-# Check port usage
+# 5. CHECK PORT USAGE
 netstat -ano | findstr :3001
 netstat -ano | findstr :3002
 ```
+
+**⚠️ CRITICAL RULE: ALWAYS use `npm run dev` first - don't guess commands!**
 
 ## Enterprise Deployment Notes
 

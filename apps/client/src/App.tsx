@@ -7,6 +7,12 @@ import Requests from './pages/Requests'
 import Reports from './pages/Reports'
 import Organization from './pages/Organization'
 import Landing from './pages/Landing'
+import Register from './pages/Register'
+import OrganizationSetup from './pages/OrganizationSetup'
+import AdminDashboard from './pages/AdminDashboard'
+import AdminUsers from './pages/AdminUsers'
+import AdminSites from './pages/AdminSites'
+import UserDashboard from './pages/UserDashboard'
 
 function Dashboard() {
   return (
@@ -189,7 +195,7 @@ function Login() {
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
-  const { signIn } = useAuth()
+  const { signIn, getDashboardRoute } = useAuth()
   const navigate = useNavigate()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -199,7 +205,8 @@ function Login() {
 
     try {
       await signIn(email, password)
-      navigate('/dashboard')
+      // Let the routing system handle the redirect based on auth state
+      navigate('/')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')
     } finally {
@@ -307,8 +314,23 @@ function Shell({ children }: { children: React.ReactNode }) {
   )
 }
 
+function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: string[] }) {
+  const { user, getDashboardRoute } = useAuth()
+
+  if (!user) {
+    return <Navigate to="/login" />
+  }
+
+  // If user role is not in allowed roles, redirect to their appropriate dashboard
+  if (allowedRoles && user.role && !allowedRoles.includes(user.role)) {
+    return <Navigate to={getDashboardRoute()} />
+  }
+
+  return <>{children}</>
+}
+
 function AppRoutes() {
-  const { user, isLoading } = useAuth()
+  const { user, isLoading, getDashboardRoute } = useAuth()
   const isAuthed = !!user
 
   if (isLoading) {
@@ -325,18 +347,30 @@ function AppRoutes() {
   return (
     <Routes>
       {/* Public routes */}
-      <Route path="/" element={<Landing />} />
-      <Route path="/login" element={<Login />} />
+      <Route path="/" element={!isAuthed ? <Landing /> : <Navigate to={getDashboardRoute()} />} />
+      <Route path="/login" element={!isAuthed ? <Login /> : <Navigate to={getDashboardRoute()} />} />
+      <Route path="/register" element={!isAuthed ? <Register /> : <Navigate to={getDashboardRoute()} />} />
+      <Route path="/organization-setup" element={<ProtectedRoute><OrganizationSetup /></ProtectedRoute>} />
 
-      {/* Protected routes */}
-      <Route path="/dashboard" element={isAuthed ? <Shell><Dashboard /></Shell> : <Navigate to="/login" />} />
+      {/* Admin-only routes */}
+      <Route path="/admin-dashboard" element={<ProtectedRoute allowedRoles={['ADMIN']}><Shell><AdminDashboard /></Shell></ProtectedRoute>} />
+      <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['ADMIN']}><Shell><AdminUsers /></Shell></ProtectedRoute>} />
+
+      {/* Sites & Areas - accessible to all authenticated users */}
+      <Route path="/admin/sites" element={<ProtectedRoute><Shell><AdminSites /></Shell></ProtectedRoute>} />
+
+      {/* End-user routes */}
+      <Route path="/user-dashboard" element={<ProtectedRoute allowedRoles={['STAFF', 'PROCUREMENT', 'APPROVER_L1', 'APPROVER_L2']}><Shell><UserDashboard /></Shell></ProtectedRoute>} />
+
+      {/* Legacy/fallback routes */}
+      <Route path="/dashboard" element={isAuthed ? <Navigate to={getDashboardRoute()} /> : <Navigate to="/login" />} />
       <Route path="/catalog" element={isAuthed ? <Shell><Catalog /></Shell> : <Navigate to="/login" />} />
       <Route path="/requests" element={isAuthed ? <Shell><Requests /></Shell> : <Navigate to="/login" />} />
       <Route path="/reports" element={isAuthed ? <Shell><Reports /></Shell> : <Navigate to="/login" />} />
       <Route path="/organization" element={isAuthed ? <Shell><Organization /></Shell> : <Navigate to="/login" />} />
 
       {/* Fallback */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={isAuthed ? <Navigate to={getDashboardRoute()} /> : <Navigate to="/" />} />
     </Routes>
   )
 }
