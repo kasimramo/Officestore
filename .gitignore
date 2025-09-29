@@ -83,7 +83,6 @@ cookies.txt
 .claude/
 
 # Development files (as per development guidelines)
-DEV-Files/
 
 # Environment variables
 .env
