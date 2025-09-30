@@ -2,16 +2,19 @@
 
 ## Project Information
 - **Project Name**: OfficeStore (Pantry & Office Supplies Management System)
-- **Development Server**: http://localhost:3002 (client) + http://localhost:3001 (API server)
+- **Single Server**: http://localhost:3001 (serves both API and built React client)
 - **Database**: PostgreSQL on Railway
-- **Stack**: Vite React SPA + Express.js API + Drizzle ORM + TypeScript + Tailwind CSS
+- **Stack**: Single Express.js server + built React SPA + Drizzle ORM + TypeScript + Tailwind CSS
 
-## 🏗️ **New Architecture (Monorepo)**
-- **Workspace Structure**: pnpm workspaces with apps/ and packages/
-- **Frontend**: Vite + React 19 + React Router 7 + TanStack Query
+## 🏗️ **Current Architecture (Single Server with Vite Middleware)**
+- **Architecture**: Single Express.js server with integrated Vite middleware for development
+- **Structure**: Flat root structure with `client/` and `server/` directories
+- **Frontend**: React SPA with Vite HMR directly integrated into Express (no separate dev server)
 - **Backend**: Express.js 5 + Drizzle ORM + postgres-js + Redis
 - **Authentication**: JWT access + refresh tokens + Redis session cache
-- **UI Components**: Radix UI + Tailwind CSS for enterprise-grade interface
+- **Development**: Vite middleware serves client with HMR on port 3001
+- **Production**: Express serves pre-built static files from same port 3001
+- **Deployment**: One server on port 3001 handles everything (following DynamicLicenseTracker pattern)
 
 ## Development Guidelines
 
@@ -29,16 +32,32 @@
 
 ```
 officestore/
-├── apps/
-│   ├── client/           # Vite + React SPA
-│   └── server/           # Express.js API server
-├── packages/
-│   ├── shared/           # Types, schemas, utils
-│   ├── ui/              # Reusable UI components
-│   └── config/          # Shared config (ESLint, TS, etc.)
-├── tools/
-│   ├── database/        # Migration & seed scripts
-│   └── codegen/         # API client generation
+├── client/              # Vite + React SPA (at root)
+│   ├── src/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── hooks/
+│   │   └── lib/
+│   └── index.html
+├── server/              # Express.js API server (at root)
+│   ├── db/
+│   │   ├── schema.ts
+│   │   └── index.ts     # Lazy-loading DB connection
+│   ├── routes/
+│   │   ├── auth.ts
+│   │   ├── catalogueItems.ts
+│   │   ├── categories.ts
+│   │   ├── sites.ts
+│   │   ├── areas.ts
+│   │   └── endUsers.ts
+│   ├── middleware/
+│   ├── helpers/
+│   ├── shared/          # Shared types (from packages/shared)
+│   ├── vite.ts          # Vite middleware integration
+│   └── index.ts         # Main server entry point
+├── vite.config.ts       # Root Vite configuration
+├── package.json         # Root package.json with merged dependencies
+├── tsconfig.json        # Root TypeScript configuration
 └── DEV-Files/
     ├── database/
     │   └── scripts/      # All .cjs/.sql files for database operations
@@ -50,6 +69,11 @@ officestore/
 
 ### File Path Requirements
 
+- **Server files**: All in `server/` directory (no more `apps/server/`)
+- **Client files**: All in `client/` directory (no more `apps/client/`)
+- **Shared types**: Located in `server/shared/` (no more workspace packages)
+- **Database schema**: `server/db/schema.ts`
+- **Database connection**: `server/db/index.ts` (lazy-loading with Proxy pattern)
 - **Database scripts**: Use `DEV-Files/database/scripts/` for all .cjs/.sql files
   - You have access only to dev database
   - For production DB create scripts for manual offline application
@@ -68,35 +92,40 @@ officestore/
 
 ## Development Server Management
 
-### Port Consistency (Monorepo)
-- **API Server**: http://localhost:3001 (Express.js)
-- **Client SPA**: http://localhost:3002 (Vite dev server)
-- Use `pnpm dev` from root to start both servers concurrently
+### Single Server Architecture with Vite Middleware
+- **Development Server**: http://localhost:3001 (Express.js with Vite middleware for HMR)
+- **Production Server**: http://localhost:3001 (same Express server serving pre-built static files)
+- **Architecture**: Single server for both development AND production (no separate client server)
 
 ### 🚨 MANDATORY DEV SERVER COMMANDS (NO TRIAL & ERROR)
 
-**ALWAYS check package.json first, then use these exact commands:**
+**NEW ARCHITECTURE:**
+- **Development**: Single server on port 3001 with Vite middleware for hot reload
+- **Production**: Same server on port 3001 serving pre-built static files
+- **No more dual-server setup!**
+
+**ALWAYS use these exact commands:**
 
 ```bash
-# 1. PREFERRED METHOD: Use npm (always available)
-npm run dev                  # Starts both client:3002 + server:3001
+# DEVELOPMENT (single server with Vite HMR)
+npm run dev                  # Starts Express server with Vite middleware on :3001
 
-# 2. ALTERNATIVE: Only if pnpm is confirmed available
-pnpm dev                     # Same as above
+# PRODUCTION (single server with static files)
+npm run build                # Builds React app + bundles server
+npm start                    # Starts Express server serving pre-built files on :3001
 
-# 3. INDIVIDUAL SERVICES (if needed)
-npm run --workspace=apps/client dev    # Client only :3002
-npm run --workspace=apps/server dev    # Server only :3001
-
-# 4. KILL PROCESSES (if ports busy)
+# KILL PROCESSES (if port busy)
 npx kill-port 3001 3002 3000 3003 3004 3005
 
-# 5. CHECK PORT USAGE
-netstat -ano | findstr :3001
-netstat -ano | findstr :3002
+# Note: No more workspace commands - flat structure now
 ```
 
-**⚠️ CRITICAL RULE: ALWAYS use `npm run dev` first - don't guess commands!**
+**✅ NEW ARCHITECTURE BENEFITS:**
+- ✅ Single port (3001) for everything
+- ✅ No CORS issues
+- ✅ No token refresh issues
+- ✅ Faster HMR with integrated Vite
+- ✅ Simpler development workflow
 
 ## Enterprise Deployment Notes
 
@@ -120,8 +149,8 @@ netstat -ano | findstr :3002
 
 ### Schema Management
 - Use Drizzle ORM migrations for schema changes
-- Database schema maintained in `apps/server/src/db/schema.ts`
-- Migration files in `tools/database/migrations/`
+- Database schema maintained in `server/db/schema.ts`
+- Database connection in `server/db/index.ts` (lazy-loading with Proxy pattern)
 - Create manual scripts in `DEV-Files/database/scripts/` for production deployment
 - All database operations logged for audit compliance
 
@@ -138,36 +167,42 @@ netstat -ano | findstr :3002
 - Organization setup workflow
 - Request workflow (submit → approve → fulfill)
 
-### 🏗️ **New Architecture Stack**
-- **Frontend**: Vite + React 19 + React Router 7 + TanStack Query
-- **Backend**: Express.js 5 + Drizzle ORM + postgres-js
-- **Database**: PostgreSQL with Row-Level Security (existing schema)
+### 🏗️ **Single Server Architecture Stack**
+- **Server**: Express.js 5 with Vite middleware (development) or static serving (production)
+- **Frontend**: React SPA with integrated Vite HMR
+- **API Routes**: `/api/auth`, `/api/catalogue`, `/api/categories`, `/api/sites`, `/api/areas`, `/api/end-users`
+- **SPA Fallback**: Regex pattern `/^(?!\/api).*/` serves React app for client routing (Express 5 compatible)
+- **Database**: PostgreSQL with lazy-loading connection (Proxy pattern)
 - **Authentication**: JWT access + refresh tokens + Redis session cache
-- **Caching**: Redis for session management and API caching
-- **UI**: Radix UI primitives + Tailwind CSS
-- **Build**: Turborepo for monorepo orchestration
-- **Testing**: Vitest + Playwright + MSW
+- **Caching**: Redis for session management and API caching (optional in development)
+- **Build**: Single `npm run build` command (no monorepo tools)
+- **Static Serving**: Express serves built React app from `dist/public/` in production
 
-## Development Workflow (Monorepo)
+## Development Workflow (Single Server with Vite Middleware)
 
-1. **Start Development**: `pnpm dev` (starts both client:3002 and server:3001)
-2. **API Development**: Work in `apps/server/` with Express routes
-3. **Frontend Development**: Work in `apps/client/` with React components
-4. **Shared Code**: Use `packages/shared/` for types, schemas, utils
-5. **Database**: Use Drizzle ORM with existing PostgreSQL schema
-6. **Keep Documentation**: All .md files in `DEV-Files/documentation/` only
-7. **Performance Target**: <100ms API response times
+1. **Development**: `npm run dev` (starts single server on port 3001 with Vite HMR)
+2. **Production Build**: `npm run build` (builds React + bundles server)
+3. **Production**: `npm start` (starts single server on port 3001 serving pre-built files)
+4. **API Development**: Work in `server/` with Express routes
+5. **Frontend Development**: Work in `client/` with React components
+6. **Database**: Use Drizzle ORM with lazy-loading connection (`server/db/index.ts`)
+7. **Vite Integration**: Handled by `server/vite.ts` middleware
+8. **Keep Documentation**: All .md files in `DEV-Files/documentation/` only
+9. **Performance Target**: <100ms API response times
 
 ## Important Notes
 
 ⚠️ **Never commit sensitive data**
 ⚠️ **All .md files except README.md must go in DEV-Files/documentation/**
 ⚠️ **Database scripts for production deployment must be in DEV-Files/database/scripts/**
-⚠️ **Always use port 3002 for consistency**
+⚠️ **Single server architecture: port 3001 for both development and production**
+⚠️ **Use lazy-loading database connection to avoid loading before .env**
+⚠️ **Express 5: Use regex patterns, NOT "*" or "/*" wildcards**
 ⚠️ **Test changes in development environment before production**
 
 ---
-*Last Updated: 2025-09-27*
-*Client SPA: http://localhost:3002*
-*API Server: http://localhost:3001*
-*Architecture: Vite + React SPA + Express.js API (Monorepo)*
+*Last Updated: 2025-10-01*
+*Architecture: Single Express.js Server with Vite Middleware (Flat Structure)*
+*Development: http://localhost:3001 (Express + Vite HMR)*
+*Production: http://localhost:3001 (Express + Pre-built Static Files)*
+*Pattern: Following DynamicLicenseTracker single-server architecture*

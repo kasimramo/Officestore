@@ -1,34 +1,23 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "noEmit": true,
-    "esModuleInterop": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
+    "skipLibCheck": true,
     "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "incremental": true,
-    "baseUrl": ".",
-    "paths": {
-      "@shared/*": ["./packages/shared/src/*"],
-      "@ui/*": ["./packages/ui/src/*"],
-      "@config/*": ["./packages/config/src/*"]
-    }
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["vite/client", "node"]
   },
-  "include": [
-    "apps/**/*.ts",
-    "apps/**/*.tsx",
-    "packages/**/*.ts",
-    "packages/**/*.tsx",
-    "tools/**/*.ts"
-  ],
-  "exclude": ["node_modules", "dist", ".next"],
-  "references": [
-    { "path": "./apps/server" },
-    { "path": "./packages/shared" }
-  ]
+  "include": ["client/**/*", "server/**/*", "vite.config.ts"],
+  "exclude": ["node_modules", "dist", "build"]
 }
