@@ -11,7 +11,7 @@ export default function Reports() {
       <div className="bg-white rounded-lg border border-slate-200 p-4 mb-6">
         <div className="flex flex-wrap gap-4 items-center">
           <div className="flex gap-2">
-            <button className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-md text-sm font-medium">
+            <button className="px-3 py-1.5 bg-blue-100 text-emerald-700 rounded-md text-sm font-medium">
               Last 30 Days
             </button>
             <button className="px-3 py-1.5 text-slate-600 hover:bg-slate-100 rounded-md text-sm font-medium">
@@ -21,7 +21,7 @@ export default function Reports() {
               Last Year
             </button>
           </div>
-          <button className="ml-auto bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors">
+          <button className="ml-auto bg-emerald-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-emerald-600 transition-colors">
             Export Report
           </button>
         </div>

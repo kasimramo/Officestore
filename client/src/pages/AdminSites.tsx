@@ -290,14 +290,14 @@ export default function AdminSites() {
             </button>
             <button
               onClick={() => setShowAddSite(true)}
-              className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-white hover:bg-blue-700 text-sm font-medium"
+              className="inline-flex items-center gap-2 rounded-md bg-emerald-500 px-3 py-2 text-white hover:bg-emerald-600 text-sm font-medium"
             >
               <Building2 className="w-4 h-4" />
               Add Site
             </button>
             <button
               onClick={() => setShowAddArea(true)}
-              className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-white hover:bg-blue-700 text-sm font-medium"
+              className="inline-flex items-center gap-2 rounded-md bg-emerald-500 px-3 py-2 text-white hover:bg-emerald-600 text-sm font-medium"
             >
               <MapPin className="w-4 h-4" />
               Add Area
@@ -310,11 +310,11 @@ export default function AdminSites() {
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="text-sm text-slate-600">Total Sites</div>
-          <div className="mt-1 text-2xl font-semibold text-blue-600">{sites.length}</div>
+          <div className="mt-1 text-2xl font-semibold text-emerald-600">{sites.length}</div>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="text-sm text-slate-600">Total Areas</div>
-          <div className="mt-1 text-2xl font-semibold text-blue-600">{allAreas.length}</div>
+          <div className="mt-1 text-2xl font-semibold text-emerald-600">{allAreas.length}</div>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="text-sm text-slate-600">Low Stock Areas</div>
@@ -340,7 +340,7 @@ export default function AdminSites() {
             {isLoading && (
               <div className="flex items-center justify-center py-12">
                 <div className="text-center">
-                  <div className="inline-flex items-center justify-center rounded-lg bg-blue-600 text-white w-12 h-12 font-bold text-xl mb-4">OS</div>
+                  <div className="inline-flex items-center justify-center rounded-lg bg-emerald-500 text-white w-12 h-12 font-bold text-xl mb-4">OS</div>
                   <p className="text-slate-600">Loading sites...</p>
                 </div>
               </div>
@@ -363,7 +363,7 @@ export default function AdminSites() {
                 </p>
                 <button
                   onClick={() => setShowAddSite(true)}
-                  className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+                  className="inline-flex items-center gap-2 rounded-md bg-emerald-500 px-4 py-2 text-white hover:bg-emerald-600"
                 >
                   <Building2 className="w-4 h-4" />
                   Create First Site
@@ -683,7 +683,7 @@ function AddSiteModal({ onClose, onSave }: {
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="Enter site name"
                 required
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
 
@@ -694,7 +694,7 @@ function AddSiteModal({ onClose, onSave }: {
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Enter site description"
                 rows={3}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
 
@@ -705,7 +705,7 @@ function AddSiteModal({ onClose, onSave }: {
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                 placeholder="Enter site address"
                 rows={2}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
 
@@ -720,7 +720,7 @@ function AddSiteModal({ onClose, onSave }: {
               <button
                 type="submit"
                 disabled={!formData.name || isSubmitting}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+                className="px-4 py-2 text-sm font-medium text-white bg-emerald-500 rounded-md hover:bg-emerald-600 disabled:opacity-50"
               >
                 {isSubmitting ? 'Creating...' : 'Create Site'}
               </button>
@@ -777,7 +777,7 @@ function AddAreaModal({ sites, selectedSiteId, onClose, onSave }: {
                 value={formData.siteId}
                 onChange={(e) => setFormData({ ...formData, siteId: e.target.value })}
                 required
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
                 <option value="">Select a site</option>
                 {sites.map(site => (
@@ -794,7 +794,7 @@ function AddAreaModal({ sites, selectedSiteId, onClose, onSave }: {
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="e.g., Kitchen, Office Supplies, Reception"
                 required
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
 
@@ -805,7 +805,7 @@ function AddAreaModal({ sites, selectedSiteId, onClose, onSave }: {
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Enter area description"
                 rows={3}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
 
@@ -820,7 +820,7 @@ function AddAreaModal({ sites, selectedSiteId, onClose, onSave }: {
               <button
                 type="submit"
                 disabled={!formData.siteId || !formData.name || isSubmitting}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+                className="px-4 py-2 text-sm font-medium text-white bg-emerald-500 rounded-md hover:bg-emerald-600 disabled:opacity-50"
               >
                 {isSubmitting ? 'Creating...' : 'Create Area'}
               </button>
@@ -878,7 +878,7 @@ function EditSiteModal({ site, onClose, onSave }: {
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="Enter site name"
                 required
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
 
@@ -889,7 +889,7 @@ function EditSiteModal({ site, onClose, onSave }: {
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Enter site description"
                 rows={3}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
 
@@ -900,7 +900,7 @@ function EditSiteModal({ site, onClose, onSave }: {
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                 placeholder="Enter site address"
                 rows={2}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
 
@@ -915,7 +915,7 @@ function EditSiteModal({ site, onClose, onSave }: {
               <button
                 type="submit"
                 disabled={!formData.name || isSubmitting}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+                className="px-4 py-2 text-sm font-medium text-white bg-emerald-500 rounded-md hover:bg-emerald-600 disabled:opacity-50"
               >
                 {isSubmitting ? 'Updating...' : 'Update Site'}
               </button>
@@ -976,7 +976,7 @@ function EditAreaModal({ area, onClose, onSave }: {
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               placeholder="e.g., Conference Room A"
               required
               disabled={isSubmitting}
@@ -991,7 +991,7 @@ function EditAreaModal({ area, onClose, onSave }: {
               id="area-description"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               placeholder="Optional description"
               rows={3}
               disabled={isSubmitting}
@@ -1002,7 +1002,7 @@ function EditAreaModal({ area, onClose, onSave }: {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
               disabled={isSubmitting}
             >
               Cancel
@@ -1010,7 +1010,7 @@ function EditAreaModal({ area, onClose, onSave }: {
             <button
               type="submit"
               disabled={!formData.name.trim() || isSubmitting}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-sm font-medium text-white bg-emerald-500 border border-transparent rounded-md hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? 'Updating...' : 'Update Area'}
             </button>

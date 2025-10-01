@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { api } from '../lib/api'
+import { apiClient } from '../lib/api'
 
 type EndUser = {
   id: string
@@ -50,7 +50,7 @@ export default function AdminUsers() {
   const fetchUsers = async () => {
     try {
       setLoading(true)
-      const response = await api.get('/api/end-users')
+      const response = await apiClient.get('/api/end-users')
       setUsers(response.data.endUsers)
     } catch (err: any) {
       console.error('Error fetching users:', err)
@@ -64,9 +64,9 @@ export default function AdminUsers() {
   const fetchAccessData = async () => {
     try {
       const [sitesRes, areasRes, categoriesRes] = await Promise.all([
-        api.get('/api/sites'),
-        api.get('/api/areas'),
-        api.get('/api/categories')
+        apiClient.get('/api/sites'),
+        apiClient.get('/api/areas'),
+        apiClient.get('/api/categories')
       ])
       setSites(sitesRes.data.sites)
       setAreas(areasRes.data.areas)
@@ -83,7 +83,7 @@ export default function AdminUsers() {
 
   const handleToggleStatus = async (userId: string, currentStatus: boolean) => {
     try {
-      await api.put(`/api/end-users/${userId}/toggle-status`)
+      await apiClient.put(`/api/end-users/${userId}/toggle-status`)
       setUsers(users.map(u => u.id === userId ? { ...u, isActive: !currentStatus } : u))
     } catch (err: any) {
       console.error('Error toggling user status:', err)
@@ -110,7 +110,7 @@ export default function AdminUsers() {
             </div>
             <button
               onClick={() => setShowCreateUser(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
+              className="bg-emerald-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-emerald-600 transition-colors"
             >
               Create User
             </button>
@@ -136,7 +136,7 @@ export default function AdminUsers() {
             <div className="text-sm text-slate-600">Active Users</div>
           </div>
           <div className="bg-white rounded-lg border border-slate-200 p-6">
-            <div className="text-2xl font-bold text-blue-600">{users.filter(u => u.role === 'STAFF').length}</div>
+            <div className="text-2xl font-bold text-emerald-600">{users.filter(u => u.role === 'STAFF').length}</div>
             <div className="text-sm text-slate-600">Staff Users</div>
           </div>
           <div className="bg-white rounded-lg border border-slate-200 p-6">
@@ -201,7 +201,7 @@ export default function AdminUsers() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                         <button
                           onClick={() => setEditingUser(user)}
-                          className="text-blue-600 hover:text-blue-900"
+                          className="text-emerald-600 hover:text-emerald-900"
                         >
                           Edit
                         </button>
@@ -288,7 +288,7 @@ export default function AdminUsers() {
 function getRoleBadgeColor(role: string): string {
   switch (role) {
     case 'STAFF':
-      return 'bg-blue-100 text-blue-800'
+      return 'bg-emerald-100 text-emerald-800'
     case 'PROCUREMENT':
       return 'bg-green-100 text-green-800'
     case 'APPROVER_L1':
@@ -322,7 +322,7 @@ function CreateUserModal({ onClose, onCreateUser }: {
     setError(null)
 
     try {
-      const response = await api.post('/api/end-users', formData)
+      const response = await apiClient.post('/api/end-users', formData)
       onCreateUser(response.data.endUser)
     } catch (err: any) {
       console.error('Error creating user:', err)
@@ -359,7 +359,7 @@ function CreateUserModal({ onClose, onCreateUser }: {
                   value={formData.firstName}
                   onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                   required
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
               <div>
@@ -369,7 +369,7 @@ function CreateUserModal({ onClose, onCreateUser }: {
                   value={formData.lastName}
                   onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                   required
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
             </div>
@@ -382,7 +382,7 @@ function CreateUserModal({ onClose, onCreateUser }: {
                 onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                 placeholder="john.smith"
                 required
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
 
@@ -393,7 +393,7 @@ function CreateUserModal({ onClose, onCreateUser }: {
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 placeholder="john@company.com"
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
 
@@ -402,7 +402,7 @@ function CreateUserModal({ onClose, onCreateUser }: {
               <select
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value as EndUser['role'] })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
                 <option value="STAFF">Staff (Submit requests, update stock)</option>
                 <option value="PROCUREMENT">Procurement (Manage supplies)</option>
@@ -419,13 +419,13 @@ function CreateUserModal({ onClose, onCreateUser }: {
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 placeholder="User will be required to change on first login"
                 required
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
               <p className="text-xs text-slate-500 mt-1">User will be forced to change password on first login</p>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-              <p className="text-sm text-blue-800">
+            <div className="bg-emerald-50 border border-blue-200 rounded-md p-3">
+              <p className="text-sm text-emerald-800">
                 <strong>Note:</strong> Sites and areas can be assigned after user creation using the "Assign Sites/Areas" action.
               </p>
             </div>
@@ -435,14 +435,14 @@ function CreateUserModal({ onClose, onCreateUser }: {
                 type="button"
                 onClick={onClose}
                 disabled={loading}
-                className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading || !formData.firstName || !formData.lastName || !formData.username || !formData.password}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-sm font-medium text-white bg-emerald-500 rounded-md hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Creating...' : 'Create User'}
               </button>
@@ -475,7 +475,7 @@ function EditUserModal({ user, onClose, onUpdateUser }: {
     setError(null)
 
     try {
-      const response = await api.put(`/api/end-users/${user.id}`, formData)
+      const response = await apiClient.put(`/api/end-users/${user.id}`, formData)
       onUpdateUser(response.data.endUser)
     } catch (err: any) {
       console.error('Error updating user:', err)
@@ -512,7 +512,7 @@ function EditUserModal({ user, onClose, onUpdateUser }: {
                   value={formData.firstName}
                   onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                   required
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
               <div>
@@ -522,7 +522,7 @@ function EditUserModal({ user, onClose, onUpdateUser }: {
                   value={formData.lastName}
                   onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                   required
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
             </div>
@@ -533,7 +533,7 @@ function EditUserModal({ user, onClose, onUpdateUser }: {
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
 
@@ -542,7 +542,7 @@ function EditUserModal({ user, onClose, onUpdateUser }: {
               <select
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value as EndUser['role'] })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
                 <option value="STAFF">Staff</option>
                 <option value="PROCUREMENT">Procurement</option>
@@ -563,7 +563,7 @@ function EditUserModal({ user, onClose, onUpdateUser }: {
               <button
                 type="submit"
                 disabled={loading}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+                className="px-4 py-2 text-sm font-medium text-white bg-emerald-500 rounded-md hover:bg-emerald-600 disabled:opacity-50"
               >
                 {loading ? 'Saving...' : 'Save Changes'}
               </button>
@@ -591,7 +591,7 @@ function ResetPasswordModal({ user, onClose, onResetPassword }: {
     setError(null)
 
     try {
-      await api.post(`/api/end-users/${user.id}/reset-password`, { newPassword })
+      await apiClient.post(`/api/end-users/${user.id}/reset-password`, { newPassword })
       alert('Password reset successfully. User will be required to change it on next login.')
       onResetPassword()
     } catch (err: any) {
@@ -635,7 +635,7 @@ function ResetPasswordModal({ user, onClose, onResetPassword }: {
                 onChange={(e) => setNewPassword(e.target.value)}
                 required
                 placeholder="Enter new temporary password"
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
               <p className="text-xs text-slate-500 mt-1">User will be forced to change this password on next login</p>
             </div>
@@ -685,7 +685,7 @@ function AssignAccessModal({ user, sites, areas, categories, onClose, onAssignAc
     setError(null)
 
     try {
-      const response = await api.put(`/api/end-users/${user.id}/access`, {
+      const response = await apiClient.put(`/api/end-users/${user.id}/access`, {
         siteIds: selectedSites,
         areaIds: selectedAreas,
         categoryIds: selectedCategories
@@ -745,7 +745,7 @@ function AssignAccessModal({ user, sites, areas, categories, onClose, onAssignAc
                         type="checkbox"
                         checked={selectedSites.includes(site.id)}
                         onChange={() => toggleSelection(site.id, selectedSites, setSelectedSites)}
-                        className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                        className="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500"
                       />
                       <span className="ml-2 text-sm text-slate-700">{site.name}</span>
                     </label>
@@ -767,7 +767,7 @@ function AssignAccessModal({ user, sites, areas, categories, onClose, onAssignAc
                         type="checkbox"
                         checked={selectedAreas.includes(area.id)}
                         onChange={() => toggleSelection(area.id, selectedAreas, setSelectedAreas)}
-                        className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                        className="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500"
                       />
                       <span className="ml-2 text-sm text-slate-700">{area.name}</span>
                     </label>
@@ -789,7 +789,7 @@ function AssignAccessModal({ user, sites, areas, categories, onClose, onAssignAc
                         type="checkbox"
                         checked={selectedCategories.includes(category.id)}
                         onChange={() => toggleSelection(category.id, selectedCategories, setSelectedCategories)}
-                        className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                        className="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500"
                       />
                       <span className="ml-2 text-sm text-slate-700">{category.name}</span>
                     </label>

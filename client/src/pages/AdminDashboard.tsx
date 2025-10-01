@@ -23,7 +23,7 @@ export default function AdminDashboard() {
               </div>
             </div>
             <div className="mt-2 h-2 rounded bg-slate-100">
-              <div className="h-2 w-2/3 rounded bg-indigo-600"></div>
+              <div className="h-2 w-2/3 rounded bg-emerald-500"></div>
             </div>
           </div>
 
@@ -40,7 +40,7 @@ export default function AdminDashboard() {
             </div>
             <div className="mt-1 grid grid-cols-3 gap-1">
               <div className="h-1.5 bg-amber-500 rounded"></div>
-              <div className="h-1.5 bg-indigo-500 rounded"></div>
+              <div className="h-1.5 bg-emerald-500 rounded"></div>
               <div className="h-1.5 bg-green-500 rounded"></div>
             </div>
           </div>
@@ -129,7 +129,7 @@ export default function AdminDashboard() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-blue-700 text-xs">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700 text-xs">
                         <Flag className="w-3.5 h-3.5" />
                         Medium
                       </span>
@@ -257,9 +257,9 @@ export default function AdminDashboard() {
                   <div className="text-xs text-emerald-700">On-time Delivery</div>
                   <div className="text-2xl font-semibold text-emerald-700 mt-1">96%</div>
                 </div>
-                <div className="rounded-lg bg-indigo-50 p-3">
-                  <div className="text-xs text-indigo-700">Fill Rate</div>
-                  <div className="text-2xl font-semibold text-indigo-700 mt-1">98%</div>
+                <div className="rounded-lg bg-emerald-50 p-3">
+                  <div className="text-xs text-emerald-700">Fill Rate</div>
+                  <div className="text-2xl font-semibold text-emerald-700 mt-1">98%</div>
                 </div>
                 <div className="rounded-lg bg-amber-50 p-3">
                   <div className="text-xs text-amber-700">Quality Issues</div>
@@ -290,7 +290,7 @@ export default function AdminDashboard() {
             </div>
 
             <div className="mt-3 flex flex-wrap gap-2 text-xs">
-              <span className="inline-flex items-center gap-1 rounded-full bg-indigo-100 px-2 py-0.5 text-indigo-700">Paper • $28k</span>
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-700">Paper • $28k</span>
               <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-violet-700">Electronics • $24k</span>
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-700">Pantry • $14k</span>
               <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-amber-700">Cleaning • $8k</span>
@@ -309,7 +309,7 @@ export default function AdminDashboard() {
               </li>
 
               <li className="flex items-start gap-3">
-                <Truck className="w-4 h-4 mt-0.5 text-indigo-600" />
+                <Truck className="w-4 h-4 mt-0.5 text-emerald-600" />
                 <div>
                   <span className="font-medium">PO-10208</span> delivered by <span className="font-medium">FastSupplies</span>
                   <div className="text-xs text-slate-500">1h ago</div>

@@ -7,7 +7,7 @@ export default function Requests() {
           <h1 className="text-2xl font-bold text-slate-900">Requests</h1>
           <p className="text-slate-600 mt-1">Track and manage procurement requests</p>
         </div>
-        <button className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors">
+        <button className="bg-emerald-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-emerald-600 transition-colors">
           New Request
         </button>
       </div>
@@ -16,7 +16,7 @@ export default function Requests() {
       <div className="bg-white rounded-lg border border-slate-200 p-4 mb-6">
         <div className="flex flex-wrap gap-4 items-center">
           <div className="flex gap-2">
-            <button className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-md text-sm font-medium">
+            <button className="px-3 py-1.5 bg-blue-100 text-emerald-700 rounded-md text-sm font-medium">
               All (12)
             </button>
             <button className="px-3 py-1.5 text-slate-600 hover:bg-slate-100 rounded-md text-sm font-medium">
@@ -32,7 +32,7 @@ export default function Requests() {
           <div className="flex-1 min-w-[200px]">
             <input
               placeholder="Search requests..."
-              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
         </div>
@@ -83,7 +83,7 @@ function RequestRow({ request }: { request: any }) {
   const statusColors: Record<string, string> = {
     pending: 'bg-orange-100 text-orange-700',
     approved: 'bg-green-100 text-green-700',
-    fulfilled: 'bg-blue-100 text-blue-700',
+    fulfilled: 'bg-blue-100 text-emerald-700',
     rejected: 'bg-red-100 text-red-700'
   }
 
@@ -117,7 +117,7 @@ function RequestRow({ request }: { request: any }) {
         ${request.total}
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-        <button className="text-blue-600 hover:text-blue-700 font-medium mr-3">
+        <button className="text-emerald-600 hover:text-emerald-700 font-medium mr-3">
           View
         </button>
         {request.status === 'pending' && (

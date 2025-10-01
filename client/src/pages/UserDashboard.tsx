@@ -117,7 +117,7 @@ export default function UserDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-600">Total Requests</p>
-                <p className="text-2xl font-bold text-blue-600">{requests.length}</p>
+                <p className="text-2xl font-bold text-emerald-600">{requests.length}</p>
               </div>
               <div className="text-blue-500">
                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -135,7 +135,7 @@ export default function UserDashboard() {
               onClick={() => setActiveTab('requests')}
               className={`flex-1 px-6 py-4 text-sm font-medium ${
                 activeTab === 'requests'
-                  ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                  ? 'text-emerald-600 border-b-2 border-blue-600 bg-emerald-50'
                   : 'text-slate-500 hover:text-slate-700'
               }`}
             >
@@ -145,7 +145,7 @@ export default function UserDashboard() {
               onClick={() => setActiveTab('stock')}
               className={`flex-1 px-6 py-4 text-sm font-medium ${
                 activeTab === 'stock'
-                  ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                  ? 'text-emerald-600 border-b-2 border-blue-600 bg-emerald-50'
                   : 'text-slate-500 hover:text-slate-700'
               }`}
             >
@@ -160,7 +160,7 @@ export default function UserDashboard() {
                 <h3 className="text-lg font-semibold text-slate-900">My Requests</h3>
                 <button
                   onClick={() => setShowNewRequest(true)}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
+                  className="bg-emerald-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-emerald-600 transition-colors"
                 >
                   New Request
                 </button>
@@ -245,7 +245,7 @@ export default function UserDashboard() {
                           )}
                         </td>
                         <td className="px-4 py-4 text-sm">
-                          <button className="text-blue-600 hover:text-blue-900 mr-2">Update Count</button>
+                          <button className="text-emerald-600 hover:text-blue-900 mr-2">Update Count</button>
                           {item.currentStock <= item.minStock && (
                             <button className="text-orange-600 hover:text-orange-900">Request More</button>
                           )}
@@ -366,7 +366,7 @@ function NewRequestModal({ onClose }: { onClose: () => void }) {
                         updateItem(index, 'unit', selectedItem.unit)
                       }
                     }}
-                    className="flex-1 px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
                     <option value="">Select item</option>
                     {availableItems.map(ai => (
@@ -378,7 +378,7 @@ function NewRequestModal({ onClose }: { onClose: () => void }) {
                     value={item.quantity}
                     onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value))}
                     min="1"
-                    className="w-20 px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-20 px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                   <input
                     type="text"
@@ -402,7 +402,7 @@ function NewRequestModal({ onClose }: { onClose: () => void }) {
               <button
                 type="button"
                 onClick={addItem}
-                className="text-blue-600 hover:text-blue-800 text-sm"
+                className="text-emerald-600 hover:text-blue-800 text-sm"
               >
                 + Add another item
               </button>
@@ -413,7 +413,7 @@ function NewRequestModal({ onClose }: { onClose: () => void }) {
               <select
                 value={formData.priority}
                 onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
                 <option value="LOW">Low - When convenient</option>
                 <option value="MEDIUM">Medium - Within a week</option>
@@ -428,7 +428,7 @@ function NewRequestModal({ onClose }: { onClose: () => void }) {
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 placeholder="Any additional information about this request"
                 rows={3}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
 
@@ -443,7 +443,7 @@ function NewRequestModal({ onClose }: { onClose: () => void }) {
               <button
                 type="submit"
                 disabled={!formData.items[0].name}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-sm font-medium text-white bg-emerald-500 rounded-md hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Submit Request
               </button>

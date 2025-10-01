@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
-import TopNav from './components/TopNav'
+import AppLayout from './components/AppLayout'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import Catalog from './pages/Catalog.tsx'
 import Requests from './pages/Requests'
@@ -158,7 +158,7 @@ function ActivityItem({ action, details, time, user }: {
 }) {
   return (
     <div className="flex items-start space-x-3">
-      <div className="flex-shrink-0 w-2 h-2 bg-blue-600 rounded-full mt-2"></div>
+      <div className="flex-shrink-0 w-2 h-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full mt-2"></div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-slate-900">{action}</p>
         <p className="text-sm text-slate-600">{details}</p>
@@ -220,7 +220,7 @@ function Login() {
         {/* Logo */}
         <div className="flex justify-center mb-8">
           <div className="flex items-center gap-3">
-            <span className="inline-flex items-center justify-center rounded-lg bg-blue-600 text-white w-10 h-10 font-bold text-lg">OS</span>
+            <span className="inline-flex items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-white w-10 h-10 font-bold text-lg">OS</span>
             <span className="font-bold text-xl text-slate-900">OfficeStore</span>
           </div>
         </div>
@@ -250,7 +250,7 @@ function Login() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email"
                 required
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-blue-500"
               />
             </div>
 
@@ -265,16 +265,16 @@ function Login() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
                 required
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-blue-500"
               />
             </div>
 
             <div className="flex items-center justify-between">
               <label className="flex items-center">
-                <input type="checkbox" className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500" />
+                <input type="checkbox" className="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500" />
                 <span className="ml-2 text-sm text-slate-600">Remember me</span>
               </label>
-              <button type="button" className="text-sm text-blue-600 hover:text-blue-700">
+              <button type="button" className="text-sm text-emerald-600 hover:text-emerald-700">
                 Forgot password?
               </button>
             </div>
@@ -282,7 +282,7 @@ function Login() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-blue-600 text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Signing in...' : 'Sign in'}
             </button>
@@ -291,7 +291,7 @@ function Login() {
           <div className="text-center">
             <p className="text-sm text-slate-600">
               Don't have an account?{' '}
-              <button className="text-blue-600 hover:text-blue-700 font-medium">
+              <button className="text-emerald-600 hover:text-emerald-700 font-medium">
                 Contact your administrator
               </button>
             </p>
@@ -305,14 +305,6 @@ function Login() {
   )
 }
 
-function Shell({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="min-h-screen">
-      <TopNav />
-      <main>{children}</main>
-    </div>
-  )
-}
 
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: string[] }) {
   const { user, getDashboardRoute } = useAuth()
@@ -337,7 +329,7 @@ function AppRoutes() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-flex items-center justify-center rounded-lg bg-blue-600 text-white w-12 h-12 font-bold text-xl mb-4">OS</div>
+          <div className="inline-flex items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-white w-12 h-12 font-bold text-xl mb-4">OS</div>
           <p className="text-slate-600">Loading...</p>
         </div>
       </div>
@@ -353,21 +345,21 @@ function AppRoutes() {
       <Route path="/organization-setup" element={<ProtectedRoute><OrganizationSetup /></ProtectedRoute>} />
 
       {/* Admin-only routes */}
-      <Route path="/admin-dashboard" element={<ProtectedRoute allowedRoles={['ADMIN']}><Shell><AdminDashboard /></Shell></ProtectedRoute>} />
-      <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['ADMIN']}><Shell><AdminUsers /></Shell></ProtectedRoute>} />
+      <Route path="/admin-dashboard" element={<ProtectedRoute allowedRoles={['ADMIN']}><AppLayout><AdminDashboard /></AppLayout></ProtectedRoute>} />
+      <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['ADMIN']}><AppLayout><AdminUsers /></AppLayout></ProtectedRoute>} />
 
       {/* Sites & Areas - accessible to all authenticated users */}
-      <Route path="/admin/sites" element={<ProtectedRoute><Shell><AdminSites /></Shell></ProtectedRoute>} />
+      <Route path="/admin/sites" element={<ProtectedRoute><AppLayout><AdminSites /></AppLayout></ProtectedRoute>} />
 
       {/* End-user routes */}
-      <Route path="/user-dashboard" element={<ProtectedRoute allowedRoles={['STAFF', 'PROCUREMENT', 'APPROVER_L1', 'APPROVER_L2']}><Shell><UserDashboard /></Shell></ProtectedRoute>} />
+      <Route path="/user-dashboard" element={<ProtectedRoute allowedRoles={['STAFF', 'PROCUREMENT', 'APPROVER_L1', 'APPROVER_L2']}><AppLayout><UserDashboard /></AppLayout></ProtectedRoute>} />
 
       {/* Legacy/fallback routes */}
       <Route path="/dashboard" element={isAuthed ? <Navigate to={getDashboardRoute()} /> : <Navigate to="/login" />} />
-      <Route path="/catalog" element={isAuthed ? <Shell><Catalog /></Shell> : <Navigate to="/login" />} />
-      <Route path="/requests" element={isAuthed ? <Shell><Requests /></Shell> : <Navigate to="/login" />} />
-      <Route path="/reports" element={isAuthed ? <Shell><Reports /></Shell> : <Navigate to="/login" />} />
-      <Route path="/organization" element={isAuthed ? <Shell><Organization /></Shell> : <Navigate to="/login" />} />
+      <Route path="/catalog" element={isAuthed ? <AppLayout><Catalog /></AppLayout> : <Navigate to="/login" />} />
+      <Route path="/requests" element={isAuthed ? <AppLayout><Requests /></AppLayout> : <Navigate to="/login" />} />
+      <Route path="/reports" element={isAuthed ? <AppLayout><Reports /></AppLayout> : <Navigate to="/login" />} />
+      <Route path="/organization" element={isAuthed ? <AppLayout><Organization /></AppLayout> : <Navigate to="/login" />} />
 
       {/* Fallback */}
       <Route path="*" element={isAuthed ? <Navigate to={getDashboardRoute()} /> : <Navigate to="/" />} />

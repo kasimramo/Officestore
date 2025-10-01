@@ -61,7 +61,7 @@ export default function Register() {
         {/* Logo */}
         <div className="flex justify-center mb-8">
           <div className="flex items-center gap-3">
-            <span className="inline-flex items-center justify-center rounded-lg bg-blue-600 text-white w-10 h-10 font-bold text-lg">OS</span>
+            <span className="inline-flex items-center justify-center rounded-lg bg-emerald-500 text-white w-10 h-10 font-bold text-lg">OS</span>
             <span className="font-bold text-xl text-slate-900">OfficeStore</span>
           </div>
         </div>
@@ -83,7 +83,7 @@ export default function Register() {
           <button
             type="button"
             onClick={handleGoogleSignUp}
-            className="w-full flex items-center justify-center gap-3 border border-slate-300 rounded-md py-2 px-4 text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+            className="w-full flex items-center justify-center gap-3 border border-slate-300 rounded-md py-2 px-4 text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-colors"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -117,7 +117,7 @@ export default function Register() {
                   onChange={handleInputChange}
                   placeholder="John"
                   required
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-blue-500"
                 />
               </div>
               <div>
@@ -132,7 +132,7 @@ export default function Register() {
                   onChange={handleInputChange}
                   placeholder="Doe"
                   required
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-blue-500"
                 />
               </div>
             </div>
@@ -149,7 +149,7 @@ export default function Register() {
                 onChange={handleInputChange}
                 placeholder="Your Company Name"
                 required
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-blue-500"
               />
             </div>
 
@@ -165,7 +165,7 @@ export default function Register() {
                 onChange={handleInputChange}
                 placeholder="john@company.com"
                 required
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-blue-500"
               />
             </div>
 
@@ -181,7 +181,7 @@ export default function Register() {
                 onChange={handleInputChange}
                 placeholder="Create a strong password"
                 required
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-blue-500"
               />
             </div>
 
@@ -197,14 +197,14 @@ export default function Register() {
                 onChange={handleInputChange}
                 placeholder="Confirm your password"
                 required
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-blue-500"
               />
             </div>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-blue-600 text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-emerald-500 text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Creating account...' : 'Create Organization'}
             </button>
@@ -213,7 +213,7 @@ export default function Register() {
           <div className="text-center">
             <p className="text-sm text-slate-600">
               Already have an account?{' '}
-              <Link to="/login" className="text-blue-600 hover:text-blue-700 font-medium">
+              <Link to="/login" className="text-emerald-600 hover:text-emerald-700 font-medium">
                 Sign in
               </Link>
             </p>

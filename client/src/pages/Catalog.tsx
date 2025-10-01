@@ -159,7 +159,7 @@ export default function Catalog() {
           </button>
           <button
             onClick={() => setShowItemForm(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
+            className="bg-emerald-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-emerald-600 transition-colors flex items-center gap-2"
           >
             <Plus size={16} />
             Add Item
@@ -177,13 +177,13 @@ export default function Catalog() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search catalog items..."
-                className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
               <option value="">All Categories</option>
               {categories.map((category) => (
@@ -195,7 +195,7 @@ export default function Catalog() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
               <option value="">All Statuses</option>
               <option value="active">Active</option>
@@ -256,7 +256,7 @@ export default function Catalog() {
                 </button>
                 <button
                   onClick={() => setShowItemForm(true)}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
+                  className="bg-emerald-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-emerald-600 transition-colors flex items-center gap-2"
                 >
                   <Package size={16} />
                   Add First Item
@@ -281,7 +281,7 @@ export default function Catalog() {
                           <ChevronRight className="w-4 h-4 text-slate-600" />
                         )}
                       </button>
-                      <Tag className="w-5 h-5 text-blue-600" />
+                      <Tag className="w-5 h-5 text-emerald-600" />
                       <div>
                         <div className="flex items-center gap-2">
                           <h3 className="font-semibold text-slate-900">{group.categoryName}</h3>
@@ -298,7 +298,7 @@ export default function Catalog() {
                           setSelectedCategory(group.categoryId === 'uncategorized' ? '' : group.categoryId)
                           setShowItemForm(true)
                         }}
-                        className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-md transition-colors"
+                        className="p-2 text-emerald-600 hover:text-blue-800 hover:bg-blue-100 rounded-md transition-colors"
                         title="Add Item to Category"
                       >
                         <Plus className="w-4 h-4" />
@@ -466,12 +466,12 @@ function CatalogCard({ item, onEdit, onToggleStatus }: {
         </div>
 
         <div className="flex gap-2 pt-2">
-          <button className="flex-1 bg-blue-600 text-white py-2 px-3 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors">
+          <button className="flex-1 bg-emerald-500 text-white py-2 px-3 rounded-md text-sm font-medium hover:bg-emerald-600 transition-colors">
             Request
           </button>
           <button
             onClick={() => onEdit(item)}
-            className="p-2 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100 rounded-md transition-colors"
+            className="p-2 text-emerald-600 hover:text-indigo-800 hover:bg-indigo-100 rounded-md transition-colors"
             title="Edit Item"
           >
             <Edit className="w-4 h-4" />
@@ -549,12 +549,12 @@ function CatalogListItem({ item, onEdit, onToggleStatus }: {
             </div>
 
             <div className="flex gap-2 items-center">
-              <button className="bg-blue-600 text-white py-1 px-3 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors">
+              <button className="bg-emerald-500 text-white py-1 px-3 rounded-md text-sm font-medium hover:bg-emerald-600 transition-colors">
                 Request
               </button>
               <button
                 onClick={() => onEdit(item)}
-                className="p-1.5 text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 rounded transition-colors"
+                className="p-1.5 text-emerald-600 hover:text-indigo-900 hover:bg-indigo-50 rounded transition-colors"
                 title="Edit Item"
               >
                 <Edit className="w-4 h-4" />
@@ -630,7 +630,7 @@ function CategoryForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
               placeholder="Enter category name"
               required
             />
@@ -643,7 +643,7 @@ function CategoryForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
               placeholder="Enter category description"
               rows={3}
             />
@@ -660,7 +660,7 @@ function CategoryForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
             <button
               type="submit"
               disabled={isSubmitting || !name.trim()}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? 'Creating...' : 'Create Category'}
             </button>
@@ -802,7 +802,7 @@ function ItemForm({ categories, selectedCategoryId, onClose, onSuccess }: {
                 type="text"
                 value={formData.name}
                 onChange={(e) => handleInputChange('name', e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 placeholder="Enter item name"
                 required
               />
@@ -815,7 +815,7 @@ function ItemForm({ categories, selectedCategoryId, onClose, onSuccess }: {
               <select
                 value={formData.category_id}
                 onChange={(e) => handleInputChange('category_id', e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
                 <option value="">Select Category</option>
                 {categories.map((category) => (
@@ -834,7 +834,7 @@ function ItemForm({ categories, selectedCategoryId, onClose, onSuccess }: {
             <textarea
               value={formData.description}
               onChange={(e) => handleInputChange('description', e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
               placeholder="Enter item description"
               rows={3}
             />
@@ -849,7 +849,7 @@ function ItemForm({ categories, selectedCategoryId, onClose, onSuccess }: {
                 type="text"
                 value={formData.unit}
                 onChange={(e) => handleInputChange('unit', e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 placeholder="e.g., each, box, kg"
                 required
               />
@@ -865,7 +865,7 @@ function ItemForm({ categories, selectedCategoryId, onClose, onSuccess }: {
                 min="0"
                 value={formData.cost_per_unit}
                 onChange={(e) => handleInputChange('cost_per_unit', e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 placeholder="0.00"
               />
             </div>
@@ -879,7 +879,7 @@ function ItemForm({ categories, selectedCategoryId, onClose, onSuccess }: {
                 min="0"
                 value={formData.minimum_stock}
                 onChange={(e) => handleInputChange('minimum_stock', e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 placeholder="0"
               />
             </div>
@@ -893,7 +893,7 @@ function ItemForm({ categories, selectedCategoryId, onClose, onSuccess }: {
               type="text"
               value={formData.supplier}
               onChange={(e) => handleInputChange('supplier', e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
               placeholder="Enter supplier name"
             />
           </div>
@@ -946,7 +946,7 @@ function ItemForm({ categories, selectedCategoryId, onClose, onSuccess }: {
                   type="url"
                   value={formData.image_url}
                   onChange={(e) => handleInputChange('image_url', e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   placeholder="Enter image URL (e.g., https://example.com/image.jpg)"
                 />
               ) : (
@@ -1026,7 +1026,7 @@ function ItemForm({ categories, selectedCategoryId, onClose, onSuccess }: {
             <button
               type="submit"
               disabled={isSubmitting || !formData.name.trim() || !formData.unit.trim()}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? 'Creating...' : 'Create Item'}
             </button>
@@ -1181,7 +1181,7 @@ function EditItemForm({ item, categories, onClose, onSuccess }: {
                   type="text"
                   value={formData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-blue-500"
                   placeholder="Enter name"
                   required
                 />
@@ -1193,7 +1193,7 @@ function EditItemForm({ item, categories, onClose, onSuccess }: {
                 <select
                   value={formData.category_id}
                   onChange={(e) => handleInputChange('category_id', e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-blue-500"
                 >
                   <option value="">Select Category</option>
                   {categories.map((category) => (
@@ -1213,7 +1213,7 @@ function EditItemForm({ item, categories, onClose, onSuccess }: {
               <textarea
                 value={formData.description}
                 onChange={(e) => handleInputChange('description', e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-blue-500"
                 placeholder="Enter description"
                 rows={2}
               />
@@ -1229,7 +1229,7 @@ function EditItemForm({ item, categories, onClose, onSuccess }: {
                   type="text"
                   value={formData.unit}
                   onChange={(e) => handleInputChange('unit', e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-blue-500"
                   placeholder="e.g., box"
                   required
                 />
@@ -1244,7 +1244,7 @@ function EditItemForm({ item, categories, onClose, onSuccess }: {
                   min="0"
                   value={formData.cost_per_unit}
                   onChange={(e) => handleInputChange('cost_per_unit', e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-blue-500"
                   placeholder="0.00"
                 />
               </div>
@@ -1257,7 +1257,7 @@ function EditItemForm({ item, categories, onClose, onSuccess }: {
                   min="0"
                   value={formData.minimum_stock}
                   onChange={(e) => handleInputChange('minimum_stock', e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-blue-500"
                   placeholder="0"
                 />
               </div>
@@ -1272,7 +1272,7 @@ function EditItemForm({ item, categories, onClose, onSuccess }: {
                 type="text"
                 value={formData.supplier}
                 onChange={(e) => handleInputChange('supplier', e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-blue-500"
                 placeholder="Enter supplier name"
               />
             </div>
@@ -1327,7 +1327,7 @@ function EditItemForm({ item, categories, onClose, onSuccess }: {
                       type="url"
                       value={formData.image_url}
                       onChange={(e) => handleInputChange('image_url', e.target.value)}
-                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-blue-500"
                       placeholder="Enter image URL"
                     />
                   ) : (
@@ -1384,7 +1384,7 @@ function EditItemForm({ item, categories, onClose, onSuccess }: {
             <button
               type="submit"
               disabled={isSubmitting || !formData.name.trim() || !formData.unit.trim()}
-              className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm rounded-lg font-medium shadow-lg hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm rounded-lg font-medium shadow-lg hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-all duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Save size={16} />
               {isSubmitting ? 'Saving...' : 'Save Changes'}
