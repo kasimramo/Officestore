@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authenticateToken } from '../middleware/auth.js';
 import { db } from '../db/index.js';
-import { endUsers, endUserSites, endUserAreas, endUserCategories, sites, areas, categories } from '../db/schema.js';
+import { endUsers, endUserSites, endUserAreas, endUserCategories, sites, areas, categories, roles } from '../db/schema.js';
 import { eq, and, inArray } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
@@ -49,7 +49,8 @@ router.get('/', async (req, res) => {
           email: user.email,
           firstName: user.first_name,
           lastName: user.last_name,
-          role: user.role,
+          role: user.role, // Keep legacy role for backward compatibility
+          roleId: user.role_id, // New role reference
           isActive: user.is_active,
           forcePasswordChange: user.force_password_change,
           lastLoginAt: user.last_login_at,
@@ -61,29 +62,29 @@ router.get('/', async (req, res) => {
       })
     );
 
-    res.json({ endUsers: usersWithAccess });
+    res.json({
+      success: true,
+      data: usersWithAccess
+    });
   } catch (error) {
     console.error('Error fetching end users:', error);
-    res.status(500).json({ error: 'Failed to fetch end users' });
+    res.status(500).json({
+      success: false,
+      error: { code: 'FETCH_ERROR', message: 'Failed to fetch end users' }
+    });
   }
 });
 
-// POST /api/end-users - Create a new end user (role only, no site/area assignment)
+// POST /api/end-users - Create a new end user (without role/site, assign later)
 router.post('/', async (req, res) => {
   try {
     const organizationId = req.user!.organizationId;
     const adminId = req.user!.userId;
-    const { username, email, firstName, lastName, role, password } = req.body;
+    const { username, email, firstName, lastName, password } = req.body;
 
     // Validate required fields
-    if (!username || !firstName || !lastName || !role || !password) {
+    if (!username || !firstName || !lastName || !password) {
       return res.status(400).json({ error: 'Missing required fields' });
-    }
-
-    // Validate role
-    const validRoles = ['STAFF', 'PROCUREMENT', 'APPROVER_L1', 'APPROVER_L2'];
-    if (!validRoles.includes(role)) {
-      return res.status(400).json({ error: 'Invalid role' });
     }
 
     // Check if username already exists in this organization
@@ -105,7 +106,18 @@ router.post('/', async (req, res) => {
     // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Create user
+    // Get default STAFF role for the organization
+    const defaultRole = await db
+      .select()
+      .from(roles)
+      .where(and(eq(roles.organization_id, organizationId), eq(roles.name, 'STAFF')))
+      .limit(1);
+
+    if (defaultRole.length === 0) {
+      return res.status(500).json({ error: 'Default STAFF role not found. Please create roles first.' });
+    }
+
+    // Create user with default STAFF role
     const [newUser] = await db
       .insert(endUsers)
       .values({
@@ -115,7 +127,8 @@ router.post('/', async (req, res) => {
         password_hash: passwordHash,
         first_name: firstName,
         last_name: lastName,
-        role,
+        role: 'STAFF', // Keep legacy role for backward compatibility
+        role_id: defaultRole[0].id, // Assign default STAFF role
         is_active: true,
         force_password_change: true, // Always force password change on first login
         created_by: adminId
@@ -123,19 +136,23 @@ router.post('/', async (req, res) => {
       .returning();
 
     res.status(201).json({
-      endUser: {
-        id: newUser.id,
-        username: newUser.username,
-        email: newUser.email,
-        firstName: newUser.first_name,
-        lastName: newUser.last_name,
-        role: newUser.role,
-        isActive: newUser.is_active,
-        forcePasswordChange: newUser.force_password_change,
-        createdAt: newUser.created_at,
-        sites: [],
-        areas: [],
-        categories: []
+      success: true,
+      data: {
+        endUser: {
+          id: newUser.id,
+          username: newUser.username,
+          email: newUser.email,
+          firstName: newUser.first_name,
+          lastName: newUser.last_name,
+          role: newUser.role,
+          roleId: newUser.role_id,
+          isActive: newUser.is_active,
+          forcePasswordChange: newUser.force_password_change,
+          createdAt: newUser.created_at,
+          sites: [],
+          areas: [],
+          categories: []
+        }
       }
     });
   } catch (error) {

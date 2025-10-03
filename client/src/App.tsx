@@ -12,6 +12,7 @@ import OrganizationSetup from './pages/OrganizationSetup'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminUsers from './pages/AdminUsers'
 import AdminSites from './pages/AdminSites'
+import AdminRoles from './pages/AdminRoles'
 import UserDashboard from './pages/UserDashboard'
 
 function Dashboard() {
@@ -347,6 +348,7 @@ function AppRoutes() {
       {/* Admin-only routes */}
       <Route path="/admin-dashboard" element={<ProtectedRoute allowedRoles={['ADMIN']}><AppLayout><AdminDashboard /></AppLayout></ProtectedRoute>} />
       <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['ADMIN']}><AppLayout><AdminUsers /></AppLayout></ProtectedRoute>} />
+      <Route path="/admin/roles" element={<ProtectedRoute allowedRoles={['ADMIN']}><AppLayout><AdminRoles /></AppLayout></ProtectedRoute>} />
 
       {/* Sites & Areas - accessible to all authenticated users */}
       <Route path="/admin/sites" element={<ProtectedRoute><AppLayout><AdminSites /></AppLayout></ProtectedRoute>} />

@@ -1,4 +1,6 @@
-const API_BASE_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+// Single-server architecture: Always use relative URLs
+// Both development (Vite HMR) and production serve from same origin
+const API_BASE_URL = '';
 
 export interface AuthResponse {
   success: boolean;
@@ -47,10 +49,22 @@ export interface SigninRequest {
 
 class ApiClient {
   private accessToken: string | null = null;
+  private onSessionExpired: (() => void) | null = null;
 
   constructor() {
     // Load token from localStorage on initialization
     this.accessToken = localStorage.getItem('auth_token');
+  }
+
+  private handleSessionExpired() {
+    this.clearToken();
+    if (this.onSessionExpired) {
+      this.onSessionExpired();
+    }
+  }
+
+  setSessionExpiredCallback(callback: () => void) {
+    this.onSessionExpired = callback;
   }
 
   setToken(token: string) {
@@ -116,10 +130,10 @@ class ApiClient {
         }
       }
 
-      // If refresh failed, clear tokens and throw auth error
+      // If refresh failed, clear tokens and notify session expired
       console.error('[API] Authentication failed, clearing tokens');
-      this.clearToken();
-      throw new Error(`Authentication failed`);
+      this.handleSessionExpired();
+      throw new Error('Your session has expired. Please sign in again.');
     }
 
     if (!response.ok) {
@@ -259,6 +273,82 @@ class ApiClient {
     return this.request(`/api/catalogue/${id}/toggle-status`, {
       method: 'PATCH',
     });
+  }
+
+  // Sites API
+  async getSites() {
+    return this.request('/api/sites');
+  }
+
+  async createSite(data: { name: string; description?: string; address?: string }) {
+    return this.request('/api/sites', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateSite(id: string, data: { name?: string; description?: string; address?: string }) {
+    return this.request(`/api/sites/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async toggleSiteStatus(id: string) {
+    return this.request(`/api/sites/${id}/toggle-status`, {
+      method: 'PATCH',
+    });
+  }
+
+  // Areas API
+  async createArea(data: { siteId: string; name: string; description?: string }) {
+    return this.request('/api/areas', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateArea(id: string, data: { name?: string; description?: string }) {
+    return this.request(`/api/areas/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async toggleAreaStatus(id: string) {
+    return this.request(`/api/areas/${id}/toggle-status`, {
+      method: 'PATCH',
+    });
+  }
+
+  // Generic HTTP methods
+  async get<T = any>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint, { method: 'GET' });
+  }
+
+  async post<T = any>(endpoint: string, data?: any): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: 'POST',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  async put<T = any>(endpoint: string, data?: any): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: 'PUT',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  async patch<T = any>(endpoint: string, data?: any): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: 'PATCH',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  async delete<T = any>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint, { method: 'DELETE' });
   }
 }
 

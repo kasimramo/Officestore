@@ -15,6 +15,7 @@ import { areasRouter } from './routes/areas.js';
 import { categoriesRouter } from './routes/categories.js';
 import { catalogueItemsRouter } from './routes/catalogueItems.js';
 import endUsersRouter from './routes/endUsers.js';
+import { rolesRouter } from './routes/roles.js';
 import { setupVite, serveStatic, log } from './vite.js';
 
 // ESM-safe path resolution
@@ -100,6 +101,7 @@ app.use('/api/areas', areasRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/catalogue', catalogueItemsRouter);
 app.use('/api/end-users', endUsersRouter);
+app.use('/api/roles', rolesRouter);
 
 // Catch-all for unmatched API routes - MUST be before static serving
 app.use('/api', (req, res) => {

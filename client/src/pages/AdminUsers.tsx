@@ -33,12 +33,19 @@ type Category = {
   name: string
 }
 
+type Role = {
+  id: string
+  name: string
+  description: string
+}
+
 export default function AdminUsers() {
   const { user, org } = useAuth()
   const [showCreateUser, setShowCreateUser] = useState(false)
   const [editingUser, setEditingUser] = useState<EndUser | null>(null)
   const [resettingPassword, setResettingPassword] = useState<EndUser | null>(null)
   const [assigningAccess, setAssigningAccess] = useState<EndUser | null>(null)
+  const [assigningRole, setAssigningRole] = useState<EndUser | null>(null)
   const [users, setUsers] = useState<EndUser[]>([])
   const [sites, setSites] = useState<Site[]>([])
   const [areas, setAreas] = useState<Area[]>([])
@@ -51,10 +58,10 @@ export default function AdminUsers() {
     try {
       setLoading(true)
       const response = await apiClient.get('/api/end-users')
-      setUsers(response.data.endUsers)
+      setUsers(response.data || [])
     } catch (err: any) {
       console.error('Error fetching users:', err)
-      setError(err.response?.data?.error || 'Failed to fetch users')
+      setError(err.message || 'Failed to fetch users')
     } finally {
       setLoading(false)
     }
@@ -68,9 +75,9 @@ export default function AdminUsers() {
         apiClient.get('/api/areas'),
         apiClient.get('/api/categories')
       ])
-      setSites(sitesRes.data.sites)
-      setAreas(areasRes.data.areas)
-      setCategories(categoriesRes.data.categories)
+      setSites(sitesRes.data || [])
+      setAreas(areasRes.data || [])
+      setCategories(categoriesRes.data || [])
     } catch (err) {
       console.error('Error fetching access data:', err)
     }
@@ -206,6 +213,12 @@ export default function AdminUsers() {
                           Edit
                         </button>
                         <button
+                          onClick={() => setAssigningRole(user)}
+                          className="text-blue-600 hover:text-blue-900"
+                        >
+                          Assign Role
+                        </button>
+                        <button
                           onClick={() => setAssigningAccess(user)}
                           className="text-purple-600 hover:text-purple-900"
                         >
@@ -281,6 +294,18 @@ export default function AdminUsers() {
           }}
         />
       )}
+
+      {/* Assign Role Modal */}
+      {assigningRole && (
+        <AssignRoleModal
+          user={assigningRole}
+          onClose={() => setAssigningRole(null)}
+          onAssignRole={(updatedUser) => {
+            setUsers(users.map(u => u.id === updatedUser.id ? updatedUser : u))
+            setAssigningRole(null)
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -300,7 +325,7 @@ function getRoleBadgeColor(role: string): string {
   }
 }
 
-// Create User Modal (Role only, no sites/areas)
+// Create User Modal - Simple user creation only
 function CreateUserModal({ onClose, onCreateUser }: {
   onClose: () => void
   onCreateUser: (user: EndUser) => void
@@ -310,7 +335,6 @@ function CreateUserModal({ onClose, onCreateUser }: {
     email: '',
     firstName: '',
     lastName: '',
-    role: 'STAFF' as EndUser['role'],
     password: ''
   })
   const [loading, setLoading] = useState(false)
@@ -398,20 +422,6 @@ function CreateUserModal({ onClose, onCreateUser }: {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Role *</label>
-              <select
-                value={formData.role}
-                onChange={(e) => setFormData({ ...formData, role: e.target.value as EndUser['role'] })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="STAFF">Staff (Submit requests, update stock)</option>
-                <option value="PROCUREMENT">Procurement (Manage supplies)</option>
-                <option value="APPROVER_L1">Approver Level 1</option>
-                <option value="APPROVER_L2">Approver Level 2</option>
-              </select>
-            </div>
-
-            <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Temporary Password *</label>
               <input
                 type="password"
@@ -424,9 +434,9 @@ function CreateUserModal({ onClose, onCreateUser }: {
               <p className="text-xs text-slate-500 mt-1">User will be forced to change password on first login</p>
             </div>
 
-            <div className="bg-emerald-50 border border-blue-200 rounded-md p-3">
-              <p className="text-sm text-emerald-800">
-                <strong>Note:</strong> Sites and areas can be assigned after user creation using the "Assign Sites/Areas" action.
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+              <p className="text-sm text-blue-800">
+                <strong>Note:</strong> After creating the user, you can assign roles and sites using the action buttons.
               </p>
             </div>
 
@@ -817,6 +827,143 @@ function AssignAccessModal({ user, sites, areas, categories, onClose, onAssignAc
             </div>
           </form>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// Assign Role Modal
+function AssignRoleModal({ user, onClose, onAssignRole }: {
+  user: EndUser
+  onClose: () => void
+  onAssignRole: (user: EndUser) => void
+}) {
+  const [selectedRoleId, setSelectedRoleId] = useState<string>('')
+  const [roles, setRoles] = useState<Role[]>([])
+  const [loading, setLoading] = useState(false)
+  const [fetchingRoles, setFetchingRoles] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        setFetchingRoles(true)
+        const response = await apiClient.get('/api/roles')
+        setRoles(response.data || [])
+      } catch (err: any) {
+        console.error('Error fetching roles:', err)
+        setError(err.message || 'Failed to fetch roles')
+      } finally {
+        setFetchingRoles(false)
+      }
+    }
+    fetchRoles()
+  }, [])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+
+    try {
+      if (!selectedRoleId) {
+        throw new Error('Please select a role')
+      }
+
+      const selectedRole = roles.find(r => r.id === selectedRoleId)
+      if (!selectedRole) {
+        throw new Error('Invalid role selected')
+      }
+
+      const response = await apiClient.put(`/api/end-users/${user.id}`, {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: selectedRole.name // Update with the role name
+      })
+
+      if (response.endUser) {
+        onAssignRole(response.endUser)
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to assign role')
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+        <div className="px-6 py-4 border-b border-slate-200">
+          <h3 className="text-lg font-semibold text-slate-900">
+            Assign Role - {user.firstName} {user.lastName}
+          </h3>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6">
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-sm text-red-800">{error}</p>
+            </div>
+          )}
+
+          <div className="mb-4">
+            <p className="text-sm text-slate-600 mb-3">
+              Current Role: <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(user.role)}`}>
+                {user.role}
+              </span>
+            </p>
+          </div>
+
+          {fetchingRoles ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-slate-500">Loading roles...</div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Select New Role
+              </label>
+              {roles.map((role) => (
+                <label
+                  key={role.id}
+                  className="flex items-start p-3 border border-slate-200 rounded-md hover:bg-slate-50 cursor-pointer"
+                >
+                  <input
+                    type="radio"
+                    name="role"
+                    value={role.id}
+                    checked={selectedRoleId === role.id}
+                    onChange={(e) => setSelectedRoleId(e.target.value)}
+                    className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300"
+                  />
+                  <div className="ml-3 flex-1">
+                    <div className="text-sm font-medium text-slate-900">{role.name}</div>
+                    <div className="text-sm text-slate-500">{role.description}</div>
+                  </div>
+                </label>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-6 flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading || fetchingRoles || !selectedRoleId}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+            >
+              {loading ? 'Assigning...' : 'Assign Role'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   )

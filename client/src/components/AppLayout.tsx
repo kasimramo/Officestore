@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   Bell, Search, LayoutDashboard, Users, MapPin, Package,
-  FileText, BarChart3, Settings, Plus, ChevronDown, LogOut
+  FileText, BarChart3, Settings, Plus, ChevronDown, LogOut, Shield
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 
@@ -18,6 +18,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       return [
         { name: 'Dashboard', href: '/admin-dashboard', icon: LayoutDashboard },
         { name: 'Users', href: '/admin/users', icon: Users },
+        { name: 'Roles', href: '/admin/roles', icon: Shield },
         { name: 'Sites & Areas', href: '/admin/sites', icon: MapPin },
         { name: 'Catalog', href: '/catalog', icon: Package },
         { name: 'Reports', href: '/reports', icon: BarChart3 },

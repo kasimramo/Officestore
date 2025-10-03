@@ -10,7 +10,8 @@ export const users = pgTable('users', {
   password_hash: text('password_hash'), // Optional for OAuth users
   first_name: text('first_name').notNull(),
   last_name: text('last_name').notNull(),
-  role: text('role').$type<UserRole>().notNull(),
+  role: text('role').$type<UserRole>().notNull(), // Legacy - will migrate to role_id
+  role_id: uuid('role_id'), // New role reference
   organization_id: uuid('organization_id'),
   // Google OAuth fields
   google_id: text('google_id').unique(),
@@ -157,7 +158,8 @@ export const endUsers = pgTable('end_users', {
   email: text('email'),
   first_name: text('first_name').notNull(),
   last_name: text('last_name').notNull(),
-  role: text('role').$type<'STAFF' | 'PROCUREMENT' | 'APPROVER_L1' | 'APPROVER_L2'>().notNull(),
+  role: text('role').$type<'STAFF' | 'PROCUREMENT' | 'APPROVER_L1' | 'APPROVER_L2'>().notNull(), // Legacy - will migrate to role_id
+  role_id: uuid('role_id'), // New role reference
   is_active: boolean('is_active').notNull().default(true),
   force_password_change: boolean('force_password_change').notNull().default(true),
   created_by: uuid('created_by').notNull(),
@@ -217,6 +219,10 @@ export const usersRelations = relations(users, ({ one, many }) => ({
     fields: [users.organization_id],
     references: [organizations.id]
   }),
+  role: one(roles, {
+    fields: [users.role_id],
+    references: [roles.id]
+  }),
   createdBy: one(users, {
     fields: [users.created_by],
     references: [users.id]
@@ -225,7 +231,8 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   approvedRequests: many(requests),
   fulfilledRequests: many(requests),
   sessions: many(sessions),
-  createdUsers: many(users)
+  createdUsers: many(users),
+  userSites: many(userSites)
 }));
 
 export const organizationsRelations = relations(organizations, ({ many }) => ({
@@ -234,7 +241,8 @@ export const organizationsRelations = relations(organizations, ({ many }) => ({
   areas: many(areas),
   catalogueItems: many(catalogueItems),
   requests: many(requests),
-  stock: many(stock)
+  stock: many(stock),
+  roles: many(roles)
 }));
 
 export const sitesRelations = relations(sites, ({ one, many }) => ({
@@ -244,7 +252,8 @@ export const sitesRelations = relations(sites, ({ one, many }) => ({
   }),
   areas: many(areas),
   requests: many(requests),
-  stock: many(stock)
+  stock: many(stock),
+  userSites: many(userSites)
 }));
 
 export const areasRelations = relations(areas, ({ one, many }) => ({
@@ -346,5 +355,46 @@ export const userInvitationsRelations = relations(userInvitations, ({ one }) => 
   invitedBy: one(users, {
     fields: [userInvitations.invited_by],
     references: [users.id]
+  })
+}));
+
+// Roles table
+export const roles = pgTable('roles', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organization_id: uuid('organization_id').notNull(),
+  name: text('name').notNull(),
+  description: text('description'),
+  permissions: jsonb('permissions').notNull().default({}),
+  is_active: boolean('is_active').notNull().default(true),
+  created_at: timestamp('created_at').notNull().defaultNow(),
+  updated_at: timestamp('updated_at').notNull().defaultNow()
+});
+
+// User sites mapping table (many-to-many)
+export const userSites = pgTable('user_sites', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  user_id: uuid('user_id').notNull(),
+  site_id: uuid('site_id').notNull(),
+  created_at: timestamp('created_at').notNull().defaultNow()
+});
+
+// Roles relations
+export const rolesRelations = relations(roles, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [roles.organization_id],
+    references: [organizations.id]
+  }),
+  users: many(users)
+}));
+
+// User sites relations
+export const userSitesRelations = relations(userSites, ({ one }) => ({
+  user: one(users, {
+    fields: [userSites.user_id],
+    references: [users.id]
+  }),
+  site: one(sites, {
+    fields: [userSites.site_id],
+    references: [sites.id]
   })
 }));
