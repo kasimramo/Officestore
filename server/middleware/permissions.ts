@@ -13,6 +13,7 @@ export function checkPermission(
 ) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
+      try { console.log('[perm] checkPermission for', req.method, req.originalUrl, 'need:', Array.isArray(permission)? permission.join(',') : permission) } catch {}
       // Ensure user is authenticated
       if (!req.user) {
         res.status(401).json({
@@ -27,6 +28,12 @@ export function checkPermission(
 
       const userId = req.user.userId;
       const permissions = Array.isArray(permission) ? permission : [permission];
+
+      // Admin role override: treat platform/org admins as having all permissions
+      // This ensures critical admin pages (e.g., Roles, Users) load even if DB RBAC is in transition
+      if ((req.user as any).role === 'ADMIN') {
+        return next();
+      }
 
       // Get site/area from request params or body if applicable
       const siteId = req.params.siteId || req.body.siteId;
