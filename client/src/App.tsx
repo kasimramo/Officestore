@@ -4,6 +4,7 @@ import AppLayout from './components/AppLayout'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import Catalog from './pages/Catalog.tsx'
 import Requests from './pages/Requests'
+import NewRequest from './pages/NewRequest'
 import Reports from './pages/Reports'
 import Organization from './pages/Organization'
 import Landing from './pages/Landing'
@@ -363,6 +364,7 @@ function AppRoutes() {
       <Route path="/dashboard" element={isAuthed ? <Navigate to={getDashboardRoute()} /> : <Navigate to="/login" />} />
       <Route path="/catalog" element={isAuthed ? <AppLayout><Catalog /></AppLayout> : <Navigate to="/login" />} />
       <Route path="/requests" element={isAuthed ? <AppLayout><Requests /></AppLayout> : <Navigate to="/login" />} />
+      <Route path="/requests/new" element={isAuthed ? <AppLayout><NewRequest /></AppLayout> : <Navigate to="/login" />} />
       <Route path="/reports" element={isAuthed ? <AppLayout><Reports /></AppLayout> : <Navigate to="/login" />} />
       <Route path="/organization" element={isAuthed ? <AppLayout><Organization /></AppLayout> : <Navigate to="/login" />} />
 

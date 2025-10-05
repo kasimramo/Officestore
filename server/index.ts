@@ -20,6 +20,7 @@ import { catalogueItemsRouter } from './routes/catalogueItems.js';
 import endUsersRouter from './routes/endUsers.js';
 import { rolesRouter } from './routes/roles.js';
 import permissionsRouter from './routes/permissions.js';
+import requestsRouter from './routes/requests.js';
 import { setupVite, serveStatic, log } from './vite.js';
 
 // ESM-safe path resolution
@@ -153,6 +154,7 @@ app.use('/api/catalogue', catalogueItemsRouter);
 app.use('/api/end-users', endUsersRouter);
 app.use('/api/roles', rolesRouter);
 app.use('/api/permissions', permissionsRouter);
+app.use('/api/requests', requestsRouter);
 // Mount permissions under /api/users for frontend compatibility
 app.use('/api/users', permissionsRouter);
 
