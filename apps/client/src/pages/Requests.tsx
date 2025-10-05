@@ -80,7 +80,7 @@ export default function Requests() {
 }
 
 function RequestRow({ request }: { request: any }) {
-  const statusColors = {
+  const statusColors: Record<string, string> = {
     pending: 'bg-orange-100 text-orange-700',
     approved: 'bg-green-100 text-green-700',
     fulfilled: 'bg-blue-100 text-blue-700',

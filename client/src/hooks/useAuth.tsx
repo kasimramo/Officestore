@@ -21,6 +21,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [org, setOrg] = useState<Org | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    // Setup session expired callback for idle timeout
+    import('../lib/api').then(({ apiClient }) => {
+      apiClient.setSessionExpiredCallback(() => {
+        console.log('[Auth] Session expired, redirecting to login')
+        setUser(null)
+        setOrg(null)
+        localStorage.removeItem('user')
+        localStorage.removeItem('current_org')
+        localStorage.removeItem('pending_org_setup')
+        navigate('/login', { state: { message: 'Your session has expired due to inactivity. Please sign in again.' } })
+      })
+    })
+  }, [navigate])
 
   useEffect(() => {
     // Check for existing auth on mount

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { apiClient } from '../lib/api'
+import { usePermissions, RequirePermission } from '../hooks/usePermissions'
 
 type EndUser = {
   id: string
@@ -41,6 +42,7 @@ type Role = {
 
 export default function AdminUsers() {
   const { user, org } = useAuth()
+  const { hasPermission } = usePermissions()
   const [showCreateUser, setShowCreateUser] = useState(false)
   const [editingUser, setEditingUser] = useState<EndUser | null>(null)
   const [resettingPassword, setResettingPassword] = useState<EndUser | null>(null)
@@ -115,17 +117,31 @@ export default function AdminUsers() {
                 <p className="text-sm text-slate-600">{org?.name}</p>
               </div>
             </div>
-            <button
-              onClick={() => setShowCreateUser(true)}
-              className="bg-emerald-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-emerald-600 transition-colors"
-            >
-              Create User
-            </button>
+            <RequirePermission permission="users_roles.create_users">
+              <button
+                onClick={() => setShowCreateUser(true)}
+                className="bg-emerald-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-emerald-600 transition-colors"
+              >
+                Create User
+              </button>
+            </RequirePermission>
           </div>
         </div>
       </header>
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+        {/* Search Bar */}
+        <div className="mb-6">
+          <div className="flex items-center gap-2 rounded-md border border-slate-300 px-3 py-2 bg-white max-w-md">
+            <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              placeholder="Search users..."
+              className="border-0 focus:ring-0 flex-1 text-sm outline-none"
+            />
+          </div>
+        </div>
         {error && (
           <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
             {error}
@@ -179,63 +195,71 @@ export default function AdminUsers() {
                 <tbody className="bg-white divide-y divide-slate-200">
                   {users.map((user) => (
                     <tr key={user.id} className="hover:bg-slate-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-2.5 whitespace-nowrap">
                         <div>
                           <div className="text-sm font-medium text-slate-900">{user.firstName} {user.lastName}</div>
-                          <div className="text-sm text-slate-500">@{user.username}</div>
-                          {user.email && <div className="text-sm text-slate-500">{user.email}</div>}
+                          <div className="text-xs text-slate-500">@{user.username}</div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleBadgeColor(user.role)}`}>
+                      <td className="px-6 py-2.5 whitespace-nowrap">
+                        <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${getRoleBadgeColor(user.role)}`}>
                           {user.role}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-slate-900">
-                          <div>Sites: {user.sites.length > 0 ? user.sites.map(s => s.name).join(', ') : 'None'}</div>
-                          <div>Areas: {user.areas.length > 0 ? user.areas.slice(0, 2).map(a => a.name).join(', ') : 'None'}{user.areas.length > 2 ? '...' : ''}</div>
+                      <td className="px-6 py-2.5">
+                        <div className="text-xs text-slate-600">
+                          <div className="truncate max-w-xs">Sites: {user.sites.length > 0 ? user.sites.map(s => s.name).join(', ') : 'None'}</div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                      <td className="px-6 py-2.5 whitespace-nowrap">
+                        <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                           {user.isActive ? 'Active' : 'Inactive'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                      <td className="px-6 py-2.5 whitespace-nowrap text-xs text-slate-500">
                         {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleDateString() : 'Never'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                        <button
-                          onClick={() => setEditingUser(user)}
-                          className="text-emerald-600 hover:text-emerald-900"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => setAssigningRole(user)}
-                          className="text-blue-600 hover:text-blue-900"
-                        >
-                          Assign Role
-                        </button>
-                        <button
-                          onClick={() => setAssigningAccess(user)}
-                          className="text-purple-600 hover:text-purple-900"
-                        >
-                          Assign Sites/Areas
-                        </button>
-                        <button
-                          onClick={() => setResettingPassword(user)}
-                          className="text-orange-600 hover:text-orange-900"
-                        >
-                          Reset Password
-                        </button>
-                        <button
-                          onClick={() => handleToggleStatus(user.id, user.isActive)}
-                          className={user.isActive ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'}
-                        >
-                          {user.isActive ? 'Disable' : 'Enable'}
-                        </button>
+                      <td className="px-6 py-2.5 whitespace-nowrap text-xs font-medium space-x-2">
+                        {hasPermission('users_roles.edit_users') && (
+                          <button
+                            onClick={() => setEditingUser(user)}
+                            className="text-emerald-600 hover:text-emerald-900"
+                          >
+                            Edit
+                          </button>
+                        )}
+                        {hasPermission('users_roles.edit_users') && (
+                          <button
+                            onClick={() => setAssigningRole(user)}
+                            className="text-blue-600 hover:text-blue-900"
+                          >
+                            Role
+                          </button>
+                        )}
+                        {hasPermission('users_roles.edit_users') && (
+                          <button
+                            onClick={() => setAssigningAccess(user)}
+                            className="text-purple-600 hover:text-purple-900"
+                          >
+                            Access
+                          </button>
+                        )}
+                        {hasPermission('users_roles.edit_users') && (
+                          <button
+                            onClick={() => setResettingPassword(user)}
+                            className="text-orange-600 hover:text-orange-900"
+                          >
+                            Password
+                          </button>
+                        )}
+                        {hasPermission('users_roles.deactivate_users') && (
+                          <button
+                            onClick={() => handleToggleStatus(user.id, user.isActive)}
+                            className={user.isActive ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'}
+                          >
+                            {user.isActive ? 'Disable' : 'Enable'}
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}

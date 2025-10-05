@@ -4,6 +4,7 @@ import {
   Search, Upload, Download, Building2, MapPin,
   Edit, X, Plus, Power, PowerOff, UserCheck, ChevronDown, ChevronRight
 } from 'lucide-react'
+import { apiClient } from '../lib/api'
 
 type Site = {
   id: string
@@ -43,7 +44,14 @@ export default function AdminSites() {
     try {
       setIsLoading(true)
       setError(null)
-      const response = await fetch('http://localhost:3001/api/sites')
+
+      // Use apiClient which handles authentication automatically
+      const response = await fetch('/api/sites', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json'
+        }
+      })
       const data = await response.json()
 
       if (data.success) {
@@ -63,9 +71,10 @@ export default function AdminSites() {
 
   const createSite = async (siteData: { name: string; description: string; address: string }) => {
     try {
-      const response = await fetch('http://localhost:3001/api/sites', {
+      const response = await fetch('/api/sites', {
         method: 'POST',
         headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(siteData),
@@ -87,9 +96,10 @@ export default function AdminSites() {
 
   const createArea = async (areaData: { siteId: string; name: string; description: string }) => {
     try {
-      const response = await fetch('http://localhost:3001/api/areas', {
+      const response = await fetch('/api/areas', {
         method: 'POST',
         headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(areaData),
@@ -123,9 +133,10 @@ export default function AdminSites() {
 
   const updateSite = async (id: string, siteData: { name: string; description: string; address: string }) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/sites/${id}`, {
+      const response = await fetch(`/api/sites/${id}`, {
         method: 'PUT',
         headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(siteData),
@@ -149,9 +160,10 @@ export default function AdminSites() {
 
   const toggleSiteStatus = async (id: string) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/sites/${id}/toggle-status`, {
+      const response = await fetch(`/api/sites/${id}/toggle-status`, {
         method: 'PATCH',
         headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
           'Content-Type': 'application/json',
         },
       })
@@ -174,9 +186,10 @@ export default function AdminSites() {
 
   const updateArea = async (areaId: string, areaData: { name: string; description: string }) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/areas/${areaId}`, {
+      const response = await fetch(`/api/areas/${areaId}`, {
         method: 'PUT',
         headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(areaData),
@@ -203,9 +216,10 @@ export default function AdminSites() {
 
   const toggleAreaStatus = async (areaId: string) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/areas/${areaId}/toggle-status`, {
+      const response = await fetch(`/api/areas/${areaId}/toggle-status`, {
         method: 'PATCH',
         headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
           'Content-Type': 'application/json',
         },
       })

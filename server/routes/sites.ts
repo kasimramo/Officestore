@@ -1,18 +1,26 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { db } from '../db/index.js';
 import { sites, areas } from '../db/schema.js';
 import { eq, and } from 'drizzle-orm';
-import { randomUUID } from 'crypto';
-import { ensureOrganizationExists } from '../helpers/organizationHelper.js';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
 
-// Get all sites for organization
-router.get('/', async (req, res) => {
-  console.log('🚀 GET /api/sites called')
+// Get all sites for authenticated user's organization
+router.get('/', requireAuth, async (req: Request, res: Response) => {
   try {
-    // Ensure organization exists and get its ID
-    const organizationId = await ensureOrganizationExists();
+    const user = (req as any).user;
+    const organizationId = user.organizationId;
+
+    if (!organizationId) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'NO_ORGANIZATION',
+          message: 'User must be associated with an organization'
+        }
+      });
+    }
 
     // Fetch all sites and all areas in just 2 queries (much faster!)
     const [allSites, allAreas] = await Promise.all([
@@ -62,10 +70,21 @@ router.get('/', async (req, res) => {
 });
 
 // Create new site
-router.post('/', async (req, res) => {
-  console.log('🚀 POST /api/sites called with body:', req.body)
+router.post('/', requireAuth, async (req: Request, res: Response) => {
   try {
+    const user = (req as any).user;
+    const organizationId = user.organizationId;
     const { name, description, address } = req.body;
+
+    if (!organizationId) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'NO_ORGANIZATION',
+          message: 'User must be associated with an organization'
+        }
+      });
+    }
 
     if (!name) {
       return res.status(400).json({
@@ -77,13 +96,9 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // Ensure organization exists and get its ID
-    const organizationId = await ensureOrganizationExists();
-
-    const newSite = await db
+    const [newSite] = await db
       .insert(sites)
       .values({
-        id: randomUUID(),
         organization_id: organizationId,
         name,
         description,
@@ -93,12 +108,12 @@ router.post('/', async (req, res) => {
       .returning();
 
     const siteData = {
-      id: newSite[0].id,
-      name: newSite[0].name,
-      description: newSite[0].description,
-      address: newSite[0].address,
-      isActive: newSite[0].is_active,
-      createdAt: newSite[0].created_at.toISOString(),
+      id: newSite.id,
+      name: newSite.name,
+      description: newSite.description,
+      address: newSite.address,
+      isActive: newSite.is_active,
+      createdAt: newSite.created_at.toISOString(),
       areas: []
     };
 
@@ -119,9 +134,10 @@ router.post('/', async (req, res) => {
 });
 
 // Toggle site active status (disable/enable)
-router.patch('/:id/toggle-status', async (req, res) => {
-  console.log('🚀 PATCH /api/sites/:id/toggle-status called with id:', req.params.id)
+router.patch('/:id/toggle-status', requireAuth, async (req: Request, res: Response) => {
   try {
+    const user = (req as any).user;
+    const organizationId = user.organizationId;
     const { id } = req.params;
 
     if (!id) {
@@ -134,17 +150,14 @@ router.patch('/:id/toggle-status', async (req, res) => {
       });
     }
 
-    // Ensure organization exists and get its ID
-    const organizationId = await ensureOrganizationExists();
-
     // Get current site status
-    const currentSite = await db
+    const [currentSite] = await db
       .select({ is_active: sites.is_active })
       .from(sites)
       .where(and(eq(sites.id, id), eq(sites.organization_id, organizationId)))
       .limit(1);
 
-    if (currentSite.length === 0) {
+    if (!currentSite) {
       return res.status(404).json({
         success: false,
         error: {
@@ -155,9 +168,9 @@ router.patch('/:id/toggle-status', async (req, res) => {
     }
 
     // Toggle the active status
-    const newStatus = !currentSite[0].is_active;
+    const newStatus = !currentSite.is_active;
 
-    const updatedSite = await db
+    const [updatedSite] = await db
       .update(sites)
       .set({ is_active: newStatus, updated_at: new Date() })
       .where(and(eq(sites.id, id), eq(sites.organization_id, organizationId)))
@@ -166,8 +179,8 @@ router.patch('/:id/toggle-status', async (req, res) => {
     res.json({
       success: true,
       data: {
-        id: updatedSite[0].id,
-        isActive: updatedSite[0].is_active
+        id: updatedSite.id,
+        isActive: updatedSite.is_active
       },
       message: `Site ${newStatus ? 'enabled' : 'disabled'} successfully`
     });
@@ -184,9 +197,10 @@ router.patch('/:id/toggle-status', async (req, res) => {
 });
 
 // Update site details
-router.put('/:id', async (req, res) => {
-  console.log('🚀 PUT /api/sites/:id called with id:', req.params.id, 'body:', req.body)
+router.put('/:id', requireAuth, async (req: Request, res: Response) => {
   try {
+    const user = (req as any).user;
+    const organizationId = user.organizationId;
     const { id } = req.params;
     const { name, description, address } = req.body;
 
@@ -210,10 +224,7 @@ router.put('/:id', async (req, res) => {
       });
     }
 
-    // Ensure organization exists and get its ID
-    const organizationId = await ensureOrganizationExists();
-
-    const updatedSite = await db
+    const [updatedSite] = await db
       .update(sites)
       .set({
         name,
@@ -224,7 +235,7 @@ router.put('/:id', async (req, res) => {
       .where(and(eq(sites.id, id), eq(sites.organization_id, organizationId)))
       .returning();
 
-    if (updatedSite.length === 0) {
+    if (!updatedSite) {
       return res.status(404).json({
         success: false,
         error: {
@@ -241,12 +252,12 @@ router.put('/:id', async (req, res) => {
       .where(eq(areas.site_id, id));
 
     const siteData = {
-      id: updatedSite[0].id,
-      name: updatedSite[0].name,
-      description: updatedSite[0].description,
-      address: updatedSite[0].address,
-      isActive: updatedSite[0].is_active,
-      createdAt: updatedSite[0].created_at.toISOString(),
+      id: updatedSite.id,
+      name: updatedSite.name,
+      description: updatedSite.description,
+      address: updatedSite.address,
+      isActive: updatedSite.is_active,
+      createdAt: updatedSite.created_at.toISOString(),
       areas: siteAreas.map(area => ({
         id: area.id,
         siteId: area.site_id,

@@ -4,44 +4,14 @@ import { Plus, Grid3x3, List, Search, Filter, ChevronDown, ChevronRight, Package
 import { apiClient } from '../lib/api.ts'
 
 
-// Helper function to handle queries with auto-refresh
+// Helper function to handle queries - let apiClient handle refresh automatically
 async function queryWithRefresh<T>(queryFn: () => Promise<T>): Promise<T> {
   try {
     return await queryFn()
   } catch (error: any) {
-    // If it's an auth error, try to refresh tokens and retry
-    if (error.message.includes('Authentication failed') || error.message.includes('401') || error.message.includes('status: 401')) {
-      const refreshToken = localStorage.getItem('refresh_token')
-      if (refreshToken) {
-        try {
-          const refreshResponse = await fetch('/api/auth/refresh', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ refreshToken }),
-          })
-
-          if (refreshResponse.ok) {
-            const refreshData = await refreshResponse.json()
-            if (refreshData.success && refreshData.data?.tokens) {
-              // Update API client with new tokens
-              apiClient.setToken(refreshData.data.tokens.accessToken)
-              localStorage.setItem('refresh_token', refreshData.data.tokens.refreshToken)
-
-              // Retry the original query
-              return await queryFn()
-            }
-          }
-        } catch (refreshError) {
-          console.warn('Token refresh failed:', refreshError)
-        }
-      }
-
-      // If refresh failed, clear tokens and redirect to login
-      apiClient.clearToken()
-      window.location.href = '/login'
-    }
+    // The apiClient already handles token refresh internally,
+    // so if we still get an error here, it means refresh also failed
+    console.error('Query failed after token refresh attempt:', error)
     throw error
   }
 }

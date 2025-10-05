@@ -47,7 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
-      const response = await fetch('http://localhost:3001/api/auth/signin', {
+      const response = await fetch('/api/auth/signin', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -77,9 +77,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         setUser(authUser)
+
+        // Store tokens in localStorage
         localStorage.setItem('auth_token', tokens.accessToken)
         localStorage.setItem('refresh_token', tokens.refreshToken)
         localStorage.setItem('user', JSON.stringify(authUser))
+
+        // CRITICAL: Update apiClient with the new token immediately
+        // Import apiClient dynamically to avoid circular dependencies
+        import('../lib/api').then(({ apiClient }) => {
+          apiClient.setToken(tokens.accessToken)
+        })
 
         // If user has organization, fetch it separately or handle org setup
         if (user.organization_id) {
@@ -102,7 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (userData: { firstName: string; lastName: string; email: string; password: string; organizationName: string }) => {
     try {
-      const response = await fetch('http://localhost:3001/api/auth/signup', {
+      const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -136,9 +144,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         setUser(authUser)
+
+        // Store tokens in localStorage
         localStorage.setItem('auth_token', tokens.accessToken)
         localStorage.setItem('refresh_token', tokens.refreshToken)
         localStorage.setItem('user', JSON.stringify(authUser))
+
+        // CRITICAL: Update apiClient with the new token immediately
+        import('../lib/api').then(({ apiClient }) => {
+          apiClient.setToken(tokens.accessToken)
+        })
 
         // If organization was created, store it
         if (organization) {
@@ -198,9 +213,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null)
       setOrg(null)
       localStorage.removeItem('auth_token')
+      localStorage.removeItem('refresh_token')
       localStorage.removeItem('user')
       localStorage.removeItem('current_org')
       localStorage.removeItem('pending_org_setup')
+
+      // Clear apiClient token as well
+      import('../lib/api').then(({ apiClient }) => {
+        apiClient.clearToken()
+      })
     },
     getDashboardRoute
   }), [user, org, isLoading])

@@ -75,7 +75,7 @@ export default function Dashboard({ onLogout }: DashboardProps) {
     const fetchUser = async () => {
       try {
         const userData = await apiClient.getMe()
-        setUser(userData.data?.user)
+        setUser((userData as any).data?.user)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch user data')
       } finally {

@@ -9,6 +9,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'http';
 import { connectRedis } from './config/redis.js';
+import { requireAuth } from './middleware/auth.js';
+import { db } from './db/index.js';
+import { sql } from 'drizzle-orm';
 import { authRouter } from './routes/auth.js';
 import { sitesRouter } from './routes/sites.js';
 import { areasRouter } from './routes/areas.js';
@@ -16,6 +19,7 @@ import { categoriesRouter } from './routes/categories.js';
 import { catalogueItemsRouter } from './routes/catalogueItems.js';
 import endUsersRouter from './routes/endUsers.js';
 import { rolesRouter } from './routes/roles.js';
+import permissionsRouter from './routes/permissions.js';
 import { setupVite, serveStatic, log } from './vite.js';
 
 // ESM-safe path resolution
@@ -95,6 +99,52 @@ app.get('/api/health', (req, res) => {
 // API Routes - MUST be before Vite middleware
 log('Mounting API routes');
 
+// Temporary open read endpoint to unblock Roles UI (no permission check; auth only)
+app.get('/api/roles-open', requireAuth as any, async (req: any, res) => {
+  try {
+    const organizationId = req.user!.organizationId;
+    if (!organizationId) {
+      res.status(400).json({ success: false, error: { code: 'NO_ORGANIZATION', message: 'User must be associated with an organization' } });
+      return;
+    }
+    const result: any = await db.execute(sql`
+      SELECT
+        r.id,
+        r.name,
+        r.description,
+        r.scope,
+        r.color,
+        r.is_system,
+        r.created_at,
+        r.updated_at,
+        COUNT(DISTINCT rp.permission_id) as permission_count,
+        COUNT(DISTINCT ur.user_id) as user_count
+      FROM roles r
+      LEFT JOIN role_permissions rp ON r.id = rp.role_id
+      LEFT JOIN user_roles ur ON r.id = ur.role_id
+      WHERE r.organization_id = ${organizationId}::uuid
+      GROUP BY r.id, r.name, r.description, r.scope, r.color, r.is_system, r.created_at, r.updated_at
+      ORDER BY r.is_system DESC, r.name ASC
+    `);
+    const rows = Array.isArray(result) ? result : result.rows || [];
+    res.json({ success: true, data: rows.map((role: any) => ({
+      id: role.id,
+      name: role.name,
+      description: role.description,
+      scope: role.scope,
+      color: role.color,
+      isSystem: role.is_system,
+      permissionCount: parseInt(role.permission_count),
+      userCount: parseInt(role.user_count),
+      createdAt: role.created_at,
+      updatedAt: role.updated_at
+    })) });
+  } catch (error) {
+    console.error('roles-open error', error);
+    res.status(500).json({ success: false, error: { code: 'FETCH_ROLES_FAILED', message: 'Failed to fetch roles' } });
+  }
+});
+
 app.use('/api/auth', authRouter);
 app.use('/api/sites', sitesRouter);
 app.use('/api/areas', areasRouter);
@@ -102,6 +152,9 @@ app.use('/api/categories', categoriesRouter);
 app.use('/api/catalogue', catalogueItemsRouter);
 app.use('/api/end-users', endUsersRouter);
 app.use('/api/roles', rolesRouter);
+app.use('/api/permissions', permissionsRouter);
+// Mount permissions under /api/users for frontend compatibility
+app.use('/api/users', permissionsRouter);
 
 // Catch-all for unmatched API routes - MUST be before static serving
 app.use('/api', (req, res) => {

@@ -5,33 +5,57 @@ import {
   FileText, BarChart3, Settings, Plus, ChevronDown, LogOut, Shield
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
+import { usePermissions } from '../hooks/usePermissions'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, org, signOut, getDashboardRoute } = useAuth()
+  const { hasPermission, hasAnyPermission } = usePermissions()
   const location = useLocation()
   const navigate = useNavigate()
   const [userMenuOpen, setUserMenuOpen] = useState(false)
 
-  // Dynamic navigation based on user role
+  // Dynamic navigation based on user role and permissions
   const getNavigation = () => {
-    if (user?.role === 'ADMIN') {
-      return [
-        { name: 'Dashboard', href: '/admin-dashboard', icon: LayoutDashboard },
-        { name: 'Users', href: '/admin/users', icon: Users },
-        { name: 'Roles', href: '/admin/roles', icon: Shield },
-        { name: 'Sites & Areas', href: '/admin/sites', icon: MapPin },
-        { name: 'Catalog', href: '/catalog', icon: Package },
-        { name: 'Reports', href: '/reports', icon: BarChart3 },
-      ]
-    } else {
-      return [
-        { name: 'Dashboard', href: '/user-dashboard', icon: LayoutDashboard },
-        { name: 'Sites & Areas', href: '/admin/sites', icon: MapPin },
-        { name: 'Catalog', href: '/catalog', icon: Package },
-        { name: 'Requests', href: '/requests', icon: FileText },
-        { name: 'Reports', href: '/reports', icon: BarChart3 },
-      ]
+    const navItems = []
+
+    // Dashboard - always visible
+    navItems.push({
+      name: 'Dashboard',
+      href: user?.role === 'ADMIN' ? '/admin-dashboard' : '/user-dashboard',
+      icon: LayoutDashboard
+    })
+
+    // Users - only for those with user management permissions
+    if (hasPermission('users_roles.view_users')) {
+      navItems.push({ name: 'Users', href: '/admin/users', icon: Users })
     }
+
+    // Roles - only for those with role management permissions
+    if (hasPermission('users_roles.view_roles')) {
+      navItems.push({ name: 'Roles', href: '/admin/roles', icon: Shield })
+    }
+
+    // Sites & Areas - for those with site/area view permissions
+    if (hasAnyPermission(['sites_areas.view_sites', 'sites_areas.view_areas'])) {
+      navItems.push({ name: 'Sites & Areas', href: '/admin/sites', icon: MapPin })
+    }
+
+    // Catalog - for those with catalog view permission
+    if (hasPermission('catalogue.view_catalogue')) {
+      navItems.push({ name: 'Catalog', href: '/catalog', icon: Package })
+    }
+
+    // Requests - for those with request permissions
+    if (hasAnyPermission(['requests.submit_requests', 'requests.view_requests'])) {
+      navItems.push({ name: 'Requests', href: '/requests', icon: FileText })
+    }
+
+    // Reports - for those with reporting permissions
+    if (hasPermission('reports.view_reports')) {
+      navItems.push({ name: 'Reports', href: '/reports', icon: BarChart3 })
+    }
+
+    return navItems
   }
 
   const navigation = getNavigation()
@@ -139,10 +163,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </div>
 
               {/* Quick Action Button */}
-              <button className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-md bg-emerald-500 text-white text-sm font-medium hover:bg-emerald-600 transition-colors shadow-sm">
-                <Plus className="w-4 h-4" />
-                <span>New Request</span>
-              </button>
+              {hasPermission('requests.submit_requests') && (
+                <button className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-md bg-emerald-500 text-white text-sm font-medium hover:bg-emerald-600 transition-colors shadow-sm">
+                  <Plus className="w-4 h-4" />
+                  <span>New Request</span>
+                </button>
+              )}
 
               {/* Notifications */}
               <button className="relative p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors">

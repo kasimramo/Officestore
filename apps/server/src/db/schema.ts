@@ -74,6 +74,7 @@ export const catalogueItems = pgTable('catalogue_items', {
   cost_per_unit: numeric('cost_per_unit', { precision: 10, scale: 2 }),
   supplier: text('supplier'),
   minimum_stock: integer('minimum_stock'),
+  image_url: text('image_url'), // Image URL for item photos
   is_active: boolean('is_active').notNull().default(true),
   created_at: timestamp('created_at').notNull().defaultNow(),
   updated_at: timestamp('updated_at').notNull().defaultNow()

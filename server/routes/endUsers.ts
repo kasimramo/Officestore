@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import { authenticateToken } from '../middleware/auth.js';
+import { checkPermission } from '../middleware/permissions.js';
 import { db } from '../db/index.js';
-import { endUsers, endUserSites, endUserAreas, endUserCategories, sites, areas, categories, roles } from '../db/schema.js';
-import { eq, and, inArray } from 'drizzle-orm';
+import { endUsers, endUserSites, endUserAreas, endUserCategories, sites, areas, categories, roles, users } from '../db/schema.js';
+import { eq, and, or, inArray, sql } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 
@@ -134,6 +135,66 @@ router.post('/', async (req, res) => {
         created_by: adminId
       })
       .returning();
+
+    // Sync to main users table (insert or update)
+    const condition = email
+      ? or(eq(users.username, username), eq(users.email, email))
+      : eq(users.username, username);
+    const [existingMain] = await db
+      .select()
+      .from(users)
+      .where(condition)
+      .limit(1);
+
+    if (existingMain) {
+      await db
+        .update(users)
+        .set({
+          email: email || existingMain.email || null,
+          password_hash: passwordHash,
+          first_name: firstName,
+          last_name: lastName,
+          role: 'STAFF',
+          role_id: defaultRole[0].id,
+          organization_id: organizationId,
+          is_active: true,
+          force_password_change: true,
+          updated_at: new Date(),
+        })
+        .where(eq(users.id, existingMain.id));
+    } else {
+      await db.insert(users).values({
+        username,
+        email: email || null,
+        password_hash: passwordHash,
+        first_name: firstName,
+        last_name: lastName,
+        role: 'STAFF' as any,
+        role_id: defaultRole[0].id,
+        organization_id: organizationId,
+        is_active: true,
+        email_verified: false,
+        force_password_change: true,
+        created_by: adminId,
+      });
+    }
+
+    // Ensure a base org-level role assignment exists in user_roles
+    const [mainUser] = await db
+      .select()
+      .from(users)
+      .where(or(eq(users.username, username), email ? eq(users.email, email) : eq(users.username, '__no_match__')))
+      .limit(1)
+
+    if (mainUser) {
+      await db.execute(sql`
+        INSERT INTO user_roles (user_id, role_id, site_id, area_id)
+        SELECT ${mainUser.id}::uuid, ${defaultRole[0].id}::uuid, NULL::uuid, NULL::uuid
+        WHERE NOT EXISTS (
+          SELECT 1 FROM user_roles WHERE user_id = ${mainUser.id}::uuid AND role_id = ${defaultRole[0].id}::uuid AND site_id IS NULL AND area_id IS NULL
+        )
+      `)
+    }
 
     res.status(201).json({
       success: true,
@@ -321,6 +382,12 @@ router.put('/:id/toggle-status', async (req, res) => {
       )
       .returning();
 
+    // Sync active flag in main users table
+    await db
+      .update(users)
+      .set({ is_active: updatedUser.is_active, updated_at: new Date() })
+      .where(or(eq(users.username, updatedUser.username), eq(users.email, updatedUser.email)));
+
     res.json({
       endUser: {
         id: updatedUser.id,
@@ -427,6 +494,209 @@ router.put('/:id/access', async (req, res) => {
   } catch (error) {
     console.error('Error updating user access:', error);
     res.status(500).json({ error: 'Failed to update user access' });
+  }
+});
+
+// GET /api/end-users/:id/roles - Get user's assigned roles
+router.get('/:id/roles', checkPermission('users_roles.view_users'), async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const organizationId = req.user!.organizationId;
+
+    // Verify user belongs to organization
+    const [user] = await db
+      .select()
+      .from(endUsers)
+      .where(and(eq(endUsers.id, userId), eq(endUsers.organization_id, organizationId)))
+      .limit(1);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'USER_NOT_FOUND', message: 'User not found' }
+      });
+    }
+
+    // Get user's roles using raw SQL to access new RBAC tables
+    const result = await db.execute(sql`
+      SELECT
+        r.id,
+        r.name,
+        r.description,
+        r.scope,
+        r.color,
+        r.is_system,
+        ur.site_id,
+        ur.area_id,
+        s.name as site_name,
+        a.name as area_name
+      FROM user_roles ur
+      JOIN roles r ON ur.role_id = r.id
+      LEFT JOIN sites s ON ur.site_id = s.id
+      LEFT JOIN areas a ON ur.area_id = a.id
+      WHERE ur.user_id = ${userId}::uuid
+      ORDER BY r.name
+    `);
+
+    res.json({
+      success: true,
+      data: result.rows.map((row: any) => ({
+        id: row.id,
+        name: row.name,
+        description: row.description,
+        scope: row.scope,
+        color: row.color,
+        isSystem: row.is_system,
+        siteId: row.site_id,
+        areaId: row.area_id,
+        siteName: row.site_name,
+        areaName: row.area_name,
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching user roles:', error);
+    res.status(500).json({
+      success: false,
+      error: { code: 'FETCH_USER_ROLES_FAILED', message: 'Failed to fetch user roles' }
+    });
+  }
+});
+
+// POST /api/end-users/:id/roles - Assign roles to user
+router.post('/:id/roles', checkPermission('users_roles.edit_users'), async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const organizationId = req.user!.organizationId;
+    const { roles: roleAssignments } = req.body; // Array of { roleId, siteId?, areaId? }
+
+    if (!Array.isArray(roleAssignments)) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_INPUT', message: 'roles must be an array' }
+      });
+    }
+
+    // Verify user belongs to organization
+    const [user] = await db
+      .select()
+      .from(endUsers)
+      .where(and(eq(endUsers.id, userId), eq(endUsers.organization_id, organizationId)))
+      .limit(1);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'USER_NOT_FOUND', message: 'User not found' }
+      });
+    }
+
+    // Remove existing role assignments
+    await db.execute(sql`
+      DELETE FROM user_roles WHERE user_id = ${userId}::uuid
+    `);
+
+    // Add new role assignments
+    if (roleAssignments.length > 0) {
+      for (const assignment of roleAssignments) {
+        const { roleId, siteId, areaId } = assignment;
+
+        // Verify role belongs to organization
+        const roleCheck = await db.execute(sql`
+          SELECT id FROM roles WHERE id = ${roleId}::uuid AND organization_id = ${organizationId}::uuid
+        `);
+
+        if (roleCheck.rows.length === 0) {
+          continue; // Skip invalid roles
+        }
+
+        await db.execute(sql`
+          INSERT INTO user_roles (user_id, role_id, site_id, area_id)
+          VALUES (
+            ${userId}::uuid,
+            ${roleId}::uuid,
+            ${siteId || null}::uuid,
+            ${areaId || null}::uuid
+          )
+        `);
+      }
+    }
+
+    // Fetch updated roles
+    const result = await db.execute(sql`
+      SELECT
+        r.id,
+        r.name,
+        r.description,
+        r.scope,
+        r.color,
+        r.is_system,
+        ur.site_id,
+        ur.area_id
+      FROM user_roles ur
+      JOIN roles r ON ur.role_id = r.id
+      WHERE ur.user_id = ${userId}::uuid
+      ORDER BY r.name
+    `);
+
+    res.json({
+      success: true,
+      data: result.rows.map((row: any) => ({
+        id: row.id,
+        name: row.name,
+        description: row.description,
+        scope: row.scope,
+        color: row.color,
+        isSystem: row.is_system,
+        siteId: row.site_id,
+        areaId: row.area_id,
+      })),
+      message: 'User roles updated successfully'
+    });
+  } catch (error) {
+    console.error('Error assigning user roles:', error);
+    res.status(500).json({
+      success: false,
+      error: { code: 'ASSIGN_ROLES_FAILED', message: 'Failed to assign roles' }
+    });
+  }
+});
+
+// DELETE /api/end-users/:id/roles/:roleId - Remove a specific role from user
+router.delete('/:id/roles/:roleId', checkPermission('users_roles.edit_users'), async (req, res) => {
+  try {
+    const { id: userId, roleId } = req.params;
+    const organizationId = req.user!.organizationId;
+
+    // Verify user belongs to organization
+    const [user] = await db
+      .select()
+      .from(endUsers)
+      .where(and(eq(endUsers.id, userId), eq(endUsers.organization_id, organizationId)))
+      .limit(1);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'USER_NOT_FOUND', message: 'User not found' }
+      });
+    }
+
+    // Remove the role assignment
+    await db.execute(sql`
+      DELETE FROM user_roles
+      WHERE user_id = ${userId}::uuid AND role_id = ${roleId}::uuid
+    `);
+
+  res.json({
+      success: true,
+      message: 'Role removed from user successfully'
+    });
+  } catch (error) {
+    console.error('Error removing user role:', error);
+    res.status(500).json({
+      success: false,
+      error: { code: 'REMOVE_ROLE_FAILED', message: 'Failed to remove role' }
+    });
   }
 });
 

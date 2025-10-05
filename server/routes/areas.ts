@@ -1,17 +1,27 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { db } from '../db/index.js';
 import { areas, sites } from '../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
-import { ensureOrganizationExists } from '../helpers/organizationHelper.js';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
 
 // Get all areas for organization
-router.get('/', async (req, res) => {
+router.get('/', requireAuth, async (req: Request, res: Response) => {
   try {
-    // Ensure organization exists and get its ID
-    const organizationId = await ensureOrganizationExists();
+    const user = (req as any).user;
+    const organizationId = user.organizationId;
+
+    if (!organizationId) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'NO_ORGANIZATION',
+          message: 'User must be associated with an organization'
+        }
+      });
+    }
 
     const allAreas = await db
       .select({
@@ -54,7 +64,7 @@ router.get('/', async (req, res) => {
 });
 
 // Create new area
-router.post('/', async (req, res) => {
+router.post('/', requireAuth, async (req: Request, res: Response) => {
   try {
     const { siteId, name, description } = req.body;
 
@@ -68,8 +78,18 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // Ensure organization exists and get its ID
-    const organizationId = await ensureOrganizationExists();
+    const user = (req as any).user;
+    const organizationId = user.organizationId;
+
+    if (!organizationId) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'NO_ORGANIZATION',
+          message: 'User must be associated with an organization'
+        }
+      });
+    }
 
     // Verify the site exists and belongs to the organization
     const site = await db
@@ -127,7 +147,7 @@ router.post('/', async (req, res) => {
 });
 
 // Update area
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireAuth, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { name, description } = req.body;
@@ -142,8 +162,18 @@ router.put('/:id', async (req, res) => {
       });
     }
 
-    // Ensure organization exists and get its ID
-    const organizationId = await ensureOrganizationExists();
+    const user = (req as any).user;
+    const organizationId = user.organizationId;
+
+    if (!organizationId) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'NO_ORGANIZATION',
+          message: 'User must be associated with an organization'
+        }
+      });
+    }
 
     // Verify the area exists and belongs to the organization
     const existingArea = await db
@@ -206,12 +236,22 @@ router.put('/:id', async (req, res) => {
 });
 
 // Toggle area status
-router.patch('/:id/toggle-status', async (req, res) => {
+router.patch('/:id/toggle-status', requireAuth, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    // Ensure organization exists and get its ID
-    const organizationId = await ensureOrganizationExists();
+    const user = (req as any).user;
+    const organizationId = user.organizationId;
+
+    if (!organizationId) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'NO_ORGANIZATION',
+          message: 'User must be associated with an organization'
+        }
+      });
+    }
 
     // Verify the area exists and belongs to the organization
     const existingArea = await db

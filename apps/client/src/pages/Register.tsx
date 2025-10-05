@@ -44,7 +44,8 @@ export default function Register() {
   }
 
   const handleGoogleSignUp = () => {
-    window.location.href = '/api/auth/google'
+    const base = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+    window.location.href = `${base}/api/auth/google`;
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

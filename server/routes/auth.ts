@@ -155,17 +155,34 @@ router.post('/signout', requireAuth, async (req: Request, res: Response) => {
 // GET /api/auth/me
 router.get('/me', requireAuth, async (req: Request, res: Response) => {
   try {
-    const user = await authService.getUserById(req.user!.userId);
+    // Try main users table first
+    let user = await authService.getUserById(req.user!.userId);
 
     if (!user) {
-      res.status(404).json({
-        success: false,
-        error: {
-          code: 'USER_NOT_FOUND',
-          message: 'User not found'
-        }
-      });
-      return;
+      // Fallback: attempt to read from end_users and normalize shape
+      const { db } = await import('../db/index.js');
+      const { endUsers } = await import('../db/schema.js');
+      const { eq, and } = await import('drizzle-orm');
+
+      const [eu] = await db
+        .select()
+        .from(endUsers)
+        .where(and(eq(endUsers.id, req.user!.userId), eq(endUsers.is_active, true)))
+        .limit(1);
+
+      if (!eu) {
+        res.status(404).json({
+          success: false,
+          error: {
+            code: 'USER_NOT_FOUND',
+            message: 'User not found'
+          }
+        });
+        return;
+      }
+
+      const { password_hash: _ph, last_login_at, role_id, ...rest } = eu as any;
+      user = { ...rest, email_verified: false } as any;
     }
 
     res.json({

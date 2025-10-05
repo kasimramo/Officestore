@@ -1,7 +1,7 @@
-import { eq, and } from 'drizzle-orm';
+import { eq, and, or } from 'drizzle-orm';
 import { User, AuthTokens, UserRole, Organization } from '../shared';
 import { db } from '../db/index.js';
-import { users, sessions, organizations } from '../db/schema.js';
+import { users, sessions, organizations, endUsers } from '../db/schema.js';
 import { hashPassword, verifyPassword } from '../utils/password.js';
 import { generateTokenPair, verifyRefreshToken, TokenPayload } from '../utils/jwt.js';
 import { sessionCache } from '../config/redis.js';
@@ -106,40 +106,87 @@ export class AuthService {
   }
 
   async signIn(username: string, password: string): Promise<{ user: Omit<User, 'password_hash'>; tokens: AuthTokens; forcePasswordChange?: boolean }> {
+    // 1) Try platform users table first (admins, procurement, approvers, staff-in-users)
     const [user] = await db
       .select()
       .from(users)
-      .where(and(eq(users.username, username), eq(users.is_active, true)))
+      .where(and(
+        or(eq(users.username, username), eq(users.email, username)),
+        eq(users.is_active, true)
+      ))
       .limit(1);
 
-    if (!user) {
+    if (user) {
+      const isValidPassword = await verifyPassword(password, user.password_hash);
+      if (isValidPassword) {
+        const userPayload: TokenPayload = {
+          userId: user.id,
+          username: user.username,
+          email: user.email || undefined,
+          role: user.role,
+          organizationId: user.organization_id || undefined
+        };
+
+        const tokens = generateTokenPair(userPayload);
+
+        // Store refresh token in main sessions
+        await this.storeRefreshToken(user.id, tokens.refreshToken);
+
+        const { password_hash, ...userWithoutPassword } = user;
+
+        return {
+          user: userWithoutPassword,
+          tokens,
+          forcePasswordChange: user.force_password_change
+        };
+      }
+      // If user found but password doesn't match, continue to check end_users below
+    }
+
+    // 2) Fallback: Try end_users (organization staff) by username OR email
+    const [endUser] = await db
+      .select()
+      .from(endUsers)
+      .where(and(
+        or(eq(endUsers.username, username), eq(endUsers.email, username)),
+        eq(endUsers.is_active, true)
+      ))
+      .limit(1);
+
+    if (!endUser) {
+      // No match in either table
       throw new Error('Invalid credentials');
     }
 
-    const isValidPassword = await verifyPassword(password, user.password_hash);
-    if (!isValidPassword) {
+    const isValidEndUserPassword = await verifyPassword(password, endUser.password_hash);
+    if (!isValidEndUserPassword) {
       throw new Error('Invalid credentials');
     }
 
-    const userPayload: TokenPayload = {
-      userId: user.id,
-      username: user.username,
-      email: user.email || undefined,
-      role: user.role,
-      organizationId: user.organization_id || undefined
+    const endUserPayload: TokenPayload = {
+      userId: endUser.id,
+      username: endUser.username,
+      email: endUser.email || undefined,
+      role: endUser.role as any,
+      organizationId: endUser.organization_id || undefined
     };
 
-    const tokens = generateTokenPair(userPayload);
+    const tokens = generateTokenPair(endUserPayload);
 
-    // Store refresh token
-    await this.storeRefreshToken(user.id, tokens.refreshToken);
+    // Store refresh token in main sessions as part of consolidation
+    await this.storeRefreshToken(endUser.id, tokens.refreshToken);
 
-    const { password_hash, ...userWithoutPassword } = user;
+    // Map endUser row to User-like shape expected by client
+    const { password_hash: _ignored, last_login_at, role_id, ...rest } = endUser as any;
+    const normalizedUser: any = {
+      ...rest,
+      email_verified: false, // end_users do not track email verification
+    };
 
     return {
-      user: userWithoutPassword,
+      user: normalizedUser as Omit<User, 'password_hash'>,
       tokens,
-      forcePasswordChange: user.force_password_change
+      forcePasswordChange: endUser.force_password_change
     };
   }
 
@@ -147,7 +194,7 @@ export class AuthService {
     try {
       const payload = verifyRefreshToken(refreshToken);
 
-      // Check if refresh token exists in database
+      // Check if refresh token exists in main sessions only
       const [session] = await db
         .select()
         .from(sessions)
@@ -168,28 +215,45 @@ export class AuthService {
         throw new Error('Refresh token expired');
       }
 
-      // Get fresh user data
-      const [user] = await db
+      // Determine principal type by checking which table contains this id
+      let principal: any | null = null;
+      let isEndUser = false;
+
+      const [userRow] = await db
         .select()
         .from(users)
         .where(and(eq(users.id, payload.userId), eq(users.is_active, true)))
         .limit(1);
 
-      if (!user) {
+      if (userRow) {
+        principal = userRow;
+      } else {
+        const [endUserRow] = await db
+          .select()
+          .from(endUsers)
+          .where(and(eq(endUsers.id, payload.userId), eq(endUsers.is_active, true)))
+          .limit(1);
+        if (endUserRow) {
+          principal = endUserRow;
+          isEndUser = true;
+        }
+      }
+
+      if (!principal) {
         throw new Error('User not found or inactive');
       }
 
       const userPayload: TokenPayload = {
-        userId: user.id,
-        username: user.username,
-        email: user.email || undefined,
-        role: user.role,
-        organizationId: user.organization_id || undefined
-      };
+        userId: principal.id,
+        username: principal.username,
+        email: principal.email || undefined,
+        role: principal.role,
+        organizationId: principal.organization_id || undefined
+      } as any;
 
       const newTokens = generateTokenPair(userPayload);
 
-      // Update refresh token in database
+      // Update refresh token in sessions table
       await db
         .update(sessions)
         .set({
@@ -201,7 +265,7 @@ export class AuthService {
 
       // Update session cache
       await sessionCache.set(session.id, {
-        userId: user.id,
+        userId: payload.userId,
         refreshToken: newTokens.refreshToken
       });
 
@@ -249,6 +313,8 @@ export class AuthService {
       refreshToken
     });
   }
+
+  // Removed storeEndUserRefreshToken: consolidation to single sessions table
 
   private generateOrganizationSlug(name: string): string {
     return name

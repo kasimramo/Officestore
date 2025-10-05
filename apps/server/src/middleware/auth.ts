@@ -113,6 +113,9 @@ export function optionalAuth(req: Request, res: Response, next: NextFunction): v
   }
 }
 
+// Alias for backward compatibility
+export const authenticateToken = requireAuth;
+
 // Composed middleware functions for common use cases
 export const requireAdminAuth = [requireAuth, requireRole(UserRole.ADMIN)];
 export const requireProcurementAuth = [requireAuth, requireRole(UserRole.ADMIN, UserRole.PROCUREMENT)];

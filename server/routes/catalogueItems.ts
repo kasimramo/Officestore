@@ -10,9 +10,36 @@ const router = Router();
 router.get('/', requireAuth, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    const { search, category_id, status } = req.query;
+    const { search, category_id, status} = req.query;
 
-    let query = db.select({
+    // Build WHERE conditions properly to avoid overwriting (SECURITY FIX)
+    const conditions: any[] = [eq(catalogueItems.organization_id, user.organizationId)];
+
+    // Add status filter
+    if (status === 'active') {
+      conditions.push(eq(catalogueItems.is_active, true));
+    } else if (status === 'inactive') {
+      conditions.push(eq(catalogueItems.is_active, false));
+    }
+
+    // Add search filter
+    if (search && typeof search === 'string') {
+      conditions.push(
+        or(
+          ilike(catalogueItems.name, `%${search}%`),
+          ilike(catalogueItems.description, `%${search}%`),
+          ilike(catalogueItems.supplier, `%${search}%`)
+        )
+      );
+    }
+
+    // Add category filter
+    if (category_id && typeof category_id === 'string') {
+      conditions.push(eq(catalogueItems.category_id, category_id));
+    }
+
+    // Execute query with combined conditions
+    const items = await db.select({
       id: catalogueItems.id,
       name: catalogueItems.name,
       description: catalogueItems.description,
@@ -30,33 +57,8 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
     })
     .from(catalogueItems)
     .leftJoin(categories, eq(catalogueItems.category_id, categories.id))
-    .where(and(
-      eq(catalogueItems.organization_id, user.organizationId),
-      status === 'active' ? eq(catalogueItems.is_active, true) :
-      status === 'inactive' ? eq(catalogueItems.is_active, false) : undefined
-    ));
-
-    // Add search filter
-    if (search && typeof search === 'string') {
-      query = query.where(and(
-        eq(catalogueItems.organization_id, user.organizationId),
-        or(
-          ilike(catalogueItems.name, `%${search}%`),
-          ilike(catalogueItems.description, `%${search}%`),
-          ilike(catalogueItems.supplier, `%${search}%`)
-        )
-      ));
-    }
-
-    // Add category filter
-    if (category_id && typeof category_id === 'string') {
-      query = query.where(and(
-        eq(catalogueItems.organization_id, user.organizationId),
-        eq(catalogueItems.category_id, category_id)
-      ));
-    }
-
-    const items = await query.orderBy(catalogueItems.name);
+    .where(and(...conditions))
+    .orderBy(catalogueItems.name);
 
     res.json({
       success: true,

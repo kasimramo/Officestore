@@ -86,3 +86,14 @@ cookies.txt
 
 # Environment variables
 .env
+
+# CRITICAL: Prevent .js files in TypeScript source directories
+# These cause Vite to load wrong files and break UI rendering
+client/src/**/*.js
+!client/src/**/*.config.js
+!client/src/**/*.setup.js
+
+# Test files from Playwright
+*.png
+test-*.cjs
+test-*.js

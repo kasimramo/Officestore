@@ -14,37 +14,36 @@ router.get('/', async (req, res) => {
     // Ensure organization exists and get its ID
     const organizationId = await ensureOrganizationExists();
 
-    const allSites = await db
-      .select()
-      .from(sites)
-      .where(eq(sites.organization_id, organizationId));
+    // Fetch all sites and all areas in just 2 queries (much faster!)
+    const [allSites, allAreas] = await Promise.all([
+      db.select().from(sites).where(eq(sites.organization_id, organizationId)),
+      db.select().from(areas).where(eq(areas.organization_id, organizationId))
+    ]);
 
-    // Get areas for each site
-    const sitesWithAreas = await Promise.all(
-      allSites.map(async (site) => {
-        const siteAreas = await db
-          .select()
-          .from(areas)
-          .where(eq(areas.site_id, site.id));
+    // Group areas by site_id in memory (O(n) - very fast)
+    const areasBySiteId = allAreas.reduce((acc, area) => {
+      if (!acc[area.site_id]) acc[area.site_id] = [];
+      acc[area.site_id].push({
+        id: area.id,
+        siteId: area.site_id,
+        name: area.name,
+        description: area.description,
+        isActive: area.is_active,
+        createdAt: area.created_at.toISOString()
+      });
+      return acc;
+    }, {} as Record<string, any[]>);
 
-        return {
-          id: site.id,
-          name: site.name,
-          description: site.description,
-          address: site.address,
-          isActive: site.is_active,
-          createdAt: site.created_at.toISOString(),
-          areas: siteAreas.map(area => ({
-            id: area.id,
-            siteId: area.site_id,
-            name: area.name,
-            description: area.description,
-            isActive: area.is_active,
-            createdAt: area.created_at.toISOString()
-          }))
-        };
-      })
-    );
+    // Map sites with their areas (O(n) - very fast)
+    const sitesWithAreas = allSites.map(site => ({
+      id: site.id,
+      name: site.name,
+      description: site.description,
+      address: site.address,
+      isActive: site.is_active,
+      createdAt: site.created_at.toISOString(),
+      areas: areasBySiteId[site.id] || []
+    }));
 
     res.json({
       success: true,

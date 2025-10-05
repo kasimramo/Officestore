@@ -28,6 +28,40 @@
 4. **Use proper subfolder organization within DEV-Files/**
 5. **All scripts should reference new file locations**
 
+### 🔥 CRITICAL: .js/.tsx FILE CONFLICT ISSUE
+
+**⚠️ NEVER CREATE .js FILES IN `client/src/` DIRECTORIES**
+
+**Problem:**
+- Vite loads `.js` files with higher priority than `.tsx` files
+- When both `Component.js` and `Component.tsx` exist, Vite loads `.js` breaking UI rendering
+- Tailwind CSS classes in `.tsx` files are ignored, causing broken layouts
+- This breaks the entire application UI and is hard to debug
+
+**Permanent Prevention:**
+1. ✅ **`.gitignore` blocks all `.js` files in `client/src/`** (except config files)
+2. ✅ **Cleanup script runs before `npm run dev` and `npm run build`**
+3. ✅ **Script location**: `DEV-Files/development/utilities/cleanup-js-files.cjs`
+4. ✅ **Automatic**: No manual intervention needed
+
+**If UI breaks (navigation overlapping, no styling):**
+```bash
+# Run cleanup manually
+npm run cleanup:js
+
+# Or directly
+node DEV-Files/development/utilities/cleanup-js-files.cjs
+
+# Then restart dev server
+npm run dev
+```
+
+**Source Files Location Rules:**
+- ✅ **Client source**: `client/src/**/*.tsx` (TypeScript React)
+- ✅ **Server source**: `server/**/*.ts` (TypeScript)
+- ✅ **Config files**: `*.config.js` (JavaScript configs are OK)
+- ❌ **NEVER**: `client/src/**/*.js` (breaks Vite module resolution)
+
 ### Required Directory Structure
 
 ```
@@ -126,6 +160,140 @@ npx kill-port 3001 3002 3000 3003 3004 3005
 - ✅ No token refresh issues
 - ✅ Faster HMR with integrated Vite
 - ✅ Simpler development workflow
+
+### 🔥 CRITICAL: Tailwind CSS Configuration Requirements
+
+**⚠️ IF UI LOADS WITH NO STYLING (overlapping navigation, no spacing):**
+
+This indicates Tailwind is NOT being processed by Vite. Common symptoms:
+- Navigation shows: "ProductWorkflowsSecurityPricingSign inCreate Organization" all mashed together
+- No spacing, colors, or layout
+- HTML structure loads but looks completely broken
+
+**Root Cause: Missing or incorrect Tailwind/PostCSS/Vite configuration**
+
+**REQUIRED FILES (all must exist and be correctly configured):**
+
+1. **`client/postcss.config.cjs`** - PostCSS configuration
+   ```javascript
+   module.exports = {
+     plugins: {
+       tailwindcss: { config: './client/tailwind.config.js' },
+       autoprefixer: {},
+     },
+   }
+   ```
+
+2. **`client/tailwind.config.js`** - Tailwind configuration with correct content paths
+   ```javascript
+   export default {
+     content: [
+       './client/index.html',
+       './client/src/**/*.{js,ts,jsx,tsx}',
+       // Also include from root perspective for monorepo:
+       './index.html',
+       './src/**/*.{js,ts,jsx,tsx}',
+     ],
+     theme: { extend: {} },
+     plugins: [],
+   }
+   ```
+
+3. **`vite.config.ts`** - Vite must explicitly wire PostCSS plugins
+   ```typescript
+   import { defineConfig } from 'vite'
+   import react from '@vitejs/plugin-react'
+   import tailwindcss from 'tailwindcss'
+   import autoprefixer from 'autoprefixer'
+
+   export default defineConfig({
+     plugins: [react()],
+     css: {
+       postcss: {
+         plugins: [
+           tailwindcss({ config: './client/tailwind.config.js' }),
+           autoprefixer,
+         ],
+       },
+     },
+     // ... rest of config
+   })
+   ```
+
+4. **`client/src/styles.css`** - Must import Tailwind directives
+   ```css
+   @tailwind base;
+   @tailwind components;
+   @tailwind utilities;
+   ```
+
+5. **`client/src/main.tsx`** - Must import styles
+   ```typescript
+   import './styles.css'
+   ```
+
+**Validation Steps (CRITICAL - Always verify):**
+
+```bash
+# 1. Check if Tailwind is being processed (DEV mode)
+curl http://localhost:3001/src/styles.css
+
+# ❌ BAD (Tailwind NOT processing):
+# Returns: @tailwind base; @tailwind components; @tailwind utilities;
+
+# ✅ GOOD (Tailwind IS processing):
+# Returns: Compiled CSS with .bg-white, .text-slate-900, etc.
+
+# 2. Check build output size (PRODUCTION)
+npm run build
+# ✅ CSS should be ~35-40 kB (includes Tailwind utilities)
+# ❌ CSS ~4-5 kB means Tailwind not included
+
+# 3. Verify content paths resolve correctly
+npx tailwindcss --help
+# Check if paths in config match actual file locations
+```
+
+**Debugging Steps:**
+
+1. **Check PostCSS is loaded:**
+   ```bash
+   # In browser console after loading page:
+   # View source of http://localhost:3001/src/styles.css
+   # Should see compiled CSS, NOT @tailwind directives
+   ```
+
+2. **Verify Vite config:**
+   ```typescript
+   // vite.config.ts MUST explicitly include PostCSS plugins
+   // Don't rely on implicit loading - be explicit!
+   css: {
+     postcss: {
+       plugins: [tailwindcss(...), autoprefixer]
+     }
+   }
+   ```
+
+3. **Check content paths from repo root:**
+   ```javascript
+   // tailwind.config.js
+   // Paths must work when run from project root
+   content: [
+     './client/index.html',          // ✅ Correct
+     './client/src/**/*.tsx',        // ✅ Correct
+     'client/src/**/*.tsx',          // ❌ Missing ./
+     '../client/src/**/*.tsx',       // ❌ Wrong relative path
+   ]
+   ```
+
+**Common Mistakes:**
+- ❌ Assuming Tailwind auto-configures (it doesn't in single-server architecture)
+- ❌ Only checking file existence, not actual CSS processing
+- ❌ Incorrect content paths in tailwind.config.js
+- ❌ Missing explicit PostCSS plugin wiring in vite.config.ts
+- ❌ Not validating CSS endpoint output during development
+
+**Remember:** File existence ≠ Working configuration. Always verify the build toolchain is actually processing Tailwind by checking the CSS endpoint output!
 
 ## Enterprise Deployment Notes
 

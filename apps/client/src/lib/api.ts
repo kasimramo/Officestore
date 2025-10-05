@@ -64,8 +64,13 @@ class ApiClient {
     localStorage.removeItem('refresh_token');
   }
 
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  private async request<T>(endpoint: string, options: RequestInit = {}, retryCount = 0): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
+
+    // Reload token from localStorage on each request to handle token updates
+    if (!this.accessToken) {
+      this.accessToken = localStorage.getItem('auth_token');
+    }
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -81,11 +86,12 @@ class ApiClient {
       headers,
     });
 
-    // If we get a 401, try to refresh the token once
-    if (response.status === 401 && endpoint !== '/api/auth/signin' && endpoint !== '/api/auth/refresh') {
+    // If we get a 401, try to refresh the token (only once)
+    if (response.status === 401 && endpoint !== '/api/auth/signin' && endpoint !== '/api/auth/refresh' && retryCount === 0) {
       const refreshToken = localStorage.getItem('refresh_token');
       if (refreshToken) {
         try {
+          console.log('[API] Access token expired, attempting refresh...');
           const refreshResponse = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
             method: 'POST',
             headers: {
@@ -97,36 +103,28 @@ class ApiClient {
           if (refreshResponse.ok) {
             const refreshData = await refreshResponse.json();
             if (refreshData.success && refreshData.data?.tokens) {
+              console.log('[API] Token refresh successful, retrying request');
               this.setToken(refreshData.data.tokens.accessToken);
               localStorage.setItem('refresh_token', refreshData.data.tokens.refreshToken);
 
-              // Retry the original request with new token
-              const retryHeaders: Record<string, string> = {
-                ...headers,
-                'Authorization': `Bearer ${this.accessToken}`
-              };
-              const retryResponse = await fetch(url, {
-                ...options,
-                headers: retryHeaders,
-              });
-
-              if (retryResponse.ok) {
-                return retryResponse.json();
-              }
+              // Retry the original request with new token (increment retryCount)
+              return this.request<T>(endpoint, options, retryCount + 1);
             }
           }
         } catch (error) {
-          console.warn('Token refresh failed:', error);
+          console.error('[API] Token refresh failed:', error);
         }
       }
 
       // If refresh failed, clear tokens and throw auth error
+      console.error('[API] Authentication failed, clearing tokens');
       this.clearToken();
-      throw new Error(`Authentication failed: ${response.status}`);
+      throw new Error(`Authentication failed`);
     }
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error?.message || `HTTP error! status: ${response.status}`);
     }
 
     return response.json();

@@ -1,6 +1,7 @@
 import { db } from '../config/database.js';
 import { organizations } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
+import { randomUUID } from 'crypto';
 
 // Auto-create organization if it doesn't exist
 export async function ensureOrganizationExists(): Promise<string> {
@@ -19,11 +20,13 @@ export async function ensureOrganizationExists(): Promise<string> {
       return existingOrg[0].id;
     }
 
-    // Create new organization
+    // Create new organization with proper UUID
     console.log('Creating new organization...');
+    const organizationId = randomUUID();
     const newOrg = await db
       .insert(organizations)
       .values({
+        id: organizationId,
         name: 'D365 BOQ',
         slug: orgSlug,
         description: 'D365 Business Operations & Quality Management',
