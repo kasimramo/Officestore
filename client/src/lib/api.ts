@@ -50,6 +50,7 @@ export interface SigninRequest {
 class ApiClient {
   private accessToken: string | null = null;
   private onSessionExpired: (() => void) | null = null;
+  private refreshPromise: Promise<string | null> | null = null; // Prevents multiple simultaneous refresh requests
 
   constructor() {
     // Load token from localStorage on initialization
@@ -105,28 +106,52 @@ class ApiClient {
       const refreshToken = localStorage.getItem('refresh_token');
       if (refreshToken) {
         try {
-          console.log('[API] Access token expired, attempting refresh...');
-          const refreshResponse = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ refreshToken }),
-          });
+          // Check if a refresh is already in progress
+          if (this.refreshPromise) {
+            console.log('[API] Refresh already in progress, waiting...');
+            await this.refreshPromise;
+            // After refresh completes, retry with the new token
+            return this.request<T>(endpoint, options, retryCount + 1);
+          }
 
-          if (refreshResponse.ok) {
-            const refreshData = await refreshResponse.json();
-            if (refreshData.success && refreshData.data?.tokens) {
-              console.log('[API] Token refresh successful, retrying request');
-              this.setToken(refreshData.data.tokens.accessToken);
-              localStorage.setItem('refresh_token', refreshData.data.tokens.refreshToken);
+          // Start a new refresh request
+          console.log('[API] Access token expired, starting refresh...');
+          this.refreshPromise = (async () => {
+            try {
+              const refreshResponse = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ refreshToken }),
+              });
 
-              // Retry the original request with new token (increment retryCount)
-              return this.request<T>(endpoint, options, retryCount + 1);
+              if (refreshResponse.ok) {
+                const refreshData = await refreshResponse.json();
+                if (refreshData.success && refreshData.data?.tokens) {
+                  console.log('[API] Token refresh successful');
+                  this.setToken(refreshData.data.tokens.accessToken);
+                  localStorage.setItem('refresh_token', refreshData.data.tokens.refreshToken);
+                  return refreshData.data.tokens.accessToken;
+                }
+              }
+              return null;
+            } catch (error) {
+              console.error('[API] Token refresh failed:', error);
+              return null;
+            } finally {
+              // Clear the promise cache after completion
+              this.refreshPromise = null;
             }
+          })();
+
+          const newToken = await this.refreshPromise;
+          if (newToken) {
+            // Retry the original request with new token (increment retryCount)
+            return this.request<T>(endpoint, options, retryCount + 1);
           }
         } catch (error) {
-          console.error('[API] Token refresh failed:', error);
+          console.error('[API] Token refresh error:', error);
         }
       }
 

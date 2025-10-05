@@ -5,6 +5,7 @@ import {
   Edit, X, Plus, Power, PowerOff, UserCheck, ChevronDown, ChevronRight
 } from 'lucide-react'
 import { apiClient } from '../lib/api'
+import { usePermissions, RequirePermission } from '../hooks/usePermissions'
 
 type Site = {
   id: string
@@ -26,6 +27,7 @@ type Area = {
 }
 
 export default function AdminSites() {
+  const { hasPermission } = usePermissions()
   const [showAddSite, setShowAddSite] = useState(false)
   const [showAddArea, setShowAddArea] = useState(false)
   const [selectedSite, setSelectedSite] = useState<string | null>(null)
@@ -279,20 +281,24 @@ export default function AdminSites() {
               <Download className="w-4 h-4" />
               Export
             </button>
-            <button
-              onClick={() => setShowAddSite(true)}
-              className="inline-flex items-center gap-2 rounded-md bg-emerald-500 px-3 py-2 text-white hover:bg-emerald-600 text-sm font-medium"
-            >
-              <Building2 className="w-4 h-4" />
-              Add Site
-            </button>
-            <button
-              onClick={() => setShowAddArea(true)}
-              className="inline-flex items-center gap-2 rounded-md bg-emerald-500 px-3 py-2 text-white hover:bg-emerald-600 text-sm font-medium"
-            >
-              <MapPin className="w-4 h-4" />
-              Add Area
-            </button>
+            <RequirePermission permission="sites_areas.create_sites">
+              <button
+                onClick={() => setShowAddSite(true)}
+                className="inline-flex items-center gap-2 rounded-md bg-emerald-500 px-3 py-2 text-white hover:bg-emerald-600 text-sm font-medium"
+              >
+                <Building2 className="w-4 h-4" />
+                Add Site
+              </button>
+            </RequirePermission>
+            <RequirePermission permission="sites_areas.create_areas">
+              <button
+                onClick={() => setShowAddArea(true)}
+                className="inline-flex items-center gap-2 rounded-md bg-emerald-500 px-3 py-2 text-white hover:bg-emerald-600 text-sm font-medium"
+              >
+                <MapPin className="w-4 h-4" />
+                Add Area
+              </button>
+            </RequirePermission>
           </div>
         </div>
 
@@ -418,16 +424,18 @@ export default function AdminSites() {
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => {
-                              setEditingSite(site)
-                              setShowEditSite(true)
-                            }}
-                            className="p-2 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100 rounded-md transition-colors"
-                            title="Edit Site"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
+                          {hasPermission('sites_areas.edit_sites') && (
+                            <button
+                              onClick={() => {
+                                setEditingSite(site)
+                                setShowEditSite(true)
+                              }}
+                              className="p-2 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100 rounded-md transition-colors"
+                              title="Edit Site"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                          )}
                           <button
                             onClick={() => {
                               // TODO: Implement user management for sites
@@ -438,33 +446,37 @@ export default function AdminSites() {
                           >
                             <UserCheck className="w-4 h-4" />
                           </button>
-                          <button
-                            onClick={async () => {
-                              try {
-                                await toggleSiteStatus(site.id)
-                              } catch (err) {
-                                alert('Failed to toggle site status: ' + (err instanceof Error ? err.message : 'Unknown error'))
-                              }
-                            }}
-                            className={`p-2 rounded-md transition-colors ${
-                              site.isActive
-                                ? 'text-red-600 hover:text-red-800 hover:bg-red-100'
-                                : 'text-green-600 hover:text-green-800 hover:bg-green-100'
-                            }`}
-                            title={site.isActive ? 'Disable Site' : 'Enable Site'}
-                          >
-                            {site.isActive ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
-                          </button>
-                          <button
-                            onClick={() => {
-                              setSelectedSite(site.id)
-                              setShowAddArea(true)
-                            }}
-                            className="p-2 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100 rounded-md transition-colors"
-                            title="Add Area"
-                          >
-                            <Plus className="w-4 h-4" />
-                          </button>
+                          {hasPermission('sites_areas.edit_sites') && (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await toggleSiteStatus(site.id)
+                                } catch (err) {
+                                  alert('Failed to toggle site status: ' + (err instanceof Error ? err.message : 'Unknown error'))
+                                }
+                              }}
+                              className={`p-2 rounded-md transition-colors ${
+                                site.isActive
+                                  ? 'text-red-600 hover:text-red-800 hover:bg-red-100'
+                                  : 'text-green-600 hover:text-green-800 hover:bg-green-100'
+                              }`}
+                              title={site.isActive ? 'Disable Site' : 'Enable Site'}
+                            >
+                              {site.isActive ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
+                            </button>
+                          )}
+                          {hasPermission('sites_areas.create_areas') && (
+                            <button
+                              onClick={() => {
+                                setSelectedSite(site.id)
+                                setShowAddArea(true)
+                              }}
+                              className="p-2 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100 rounded-md transition-colors"
+                              title="Add Area"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -510,16 +522,18 @@ export default function AdminSites() {
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-1">
-                                    <button
-                                      onClick={() => {
-                                        setEditingArea(area)
-                                        setShowEditArea(true)
-                                      }}
-                                      className="p-1 text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 rounded transition-colors"
-                                      title="Edit Area"
-                                    >
-                                      <Edit className="w-3.5 h-3.5" />
-                                    </button>
+                                    {hasPermission('sites_areas.edit_areas') && (
+                                      <button
+                                        onClick={() => {
+                                          setEditingArea(area)
+                                          setShowEditArea(true)
+                                        }}
+                                        className="p-1 text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 rounded transition-colors"
+                                        title="Edit Area"
+                                      >
+                                        <Edit className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
                                     <button
                                       onClick={() => {
                                         // TODO: Implement user management for areas
@@ -530,11 +544,12 @@ export default function AdminSites() {
                                     >
                                       <UserCheck className="w-3.5 h-3.5" />
                                     </button>
-                                    <button
-                                      onClick={async () => {
-                                        try {
-                                          await toggleAreaStatus(area.id)
-                                        } catch (err) {
+                                    {hasPermission('sites_areas.edit_areas') && (
+                                      <button
+                                        onClick={async () => {
+                                          try {
+                                            await toggleAreaStatus(area.id)
+                                          } catch (err) {
                                           alert('Failed to toggle area status: ' + (err instanceof Error ? err.message : 'Unknown error'))
                                         }
                                       }}
@@ -547,6 +562,7 @@ export default function AdminSites() {
                                     >
                                       {area.isActive ? <PowerOff className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
                                     </button>
+                                  )}
                                   </div>
                                 </div>
                               </div>
