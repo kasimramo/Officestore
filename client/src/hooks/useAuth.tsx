@@ -27,13 +27,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Setup session expired callback for idle timeout
     import('../lib/api').then(({ apiClient }) => {
       apiClient.setSessionExpiredCallback(() => {
-        console.log('[Auth] Session expired, redirecting to login')
+        console.log('[Auth] Session expired, logging out user')
         setUser(null)
         setOrg(null)
         localStorage.removeItem('user')
         localStorage.removeItem('current_org')
         localStorage.removeItem('pending_org_setup')
-        navigate('/login', { state: { message: 'Your session has expired due to inactivity. Please sign in again.' } })
+        localStorage.removeItem('auth_token')
+        localStorage.removeItem('refresh_token')
+
+        // Redirect to login with session timeout message
+        navigate('/login', {
+          replace: true,
+          state: { message: 'Your session has expired. Please sign in again.' }
+        })
       })
     })
   }, [navigate])

@@ -1,9 +1,11 @@
 import { Router, Request, Response } from 'express';
-import { eq, and, desc, sql, inArray } from 'drizzle-orm';
-import { db } from '../db/index.js';
-import { requests, requestItems, catalogueItems, users, sites, areas, categories } from '../db/schema.js';
+import { eq, and, desc, sql as drizzleSql, inArray } from 'drizzle-orm';
+import { db, sql } from '../db/index.js';
+import { requests, requestItems, catalogueItems, users, sites, areas, categories, approvalWorkflows, approvalLevels, requestApprovals } from '../db/schema.js';
 import { requireAuth } from '../middleware/auth.js';
 import { checkPermission } from '../middleware/permissions.js';
+import { executeWorkflow, resumeWorkflow, getExecutionStatus } from '../helpers/workflowEngine.js';
+import { WorkflowTriggerEvent, ExecutionContext } from '../shared/types/workflow.js';
 
 const router = Router();
 
@@ -82,6 +84,15 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
           .where(eq(areas.id, request.area_id))
           .limit(1);
 
+        // Fetch workflow execution status if exists
+        const workflowExecution = await sql`
+          SELECT id, workflow_id, status, current_node_id, started_at, paused_at
+          FROM workflow_executions
+          WHERE request_id = ${request.id}
+          ORDER BY started_at DESC
+          LIMIT 1
+        `;
+
         // Fetch request items with catalogue item details
         const items = await db
           .select({
@@ -124,6 +135,14 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
             },
           })),
           totalValue: totalValue.toFixed(2),
+          workflowExecution: workflowExecution && workflowExecution.length > 0 ? {
+            id: (workflowExecution[0] as any).id,
+            workflowId: (workflowExecution[0] as any).workflow_id,
+            status: (workflowExecution[0] as any).status,
+            currentNodeId: (workflowExecution[0] as any).current_node_id,
+            startedAt: (workflowExecution[0] as any).started_at,
+            pausedAt: (workflowExecution[0] as any).paused_at
+          } : null
         };
       })
     );
@@ -188,6 +207,16 @@ router.get('/:id', requireAuth, async (req: Request, res: Response) => {
       .from(areas)
       .where(eq(areas.id, request.area_id))
       .limit(1);
+
+    // Fetch workflow execution status if exists
+    const workflowExecution = await sql`
+      SELECT we.*, w.name as workflow_name
+      FROM workflow_executions we
+      LEFT JOIN workflows w ON we.workflow_id = w.id
+      WHERE we.request_id = ${request.id}
+      ORDER BY we.started_at DESC
+      LIMIT 1
+    `;
 
     // Fetch request items with catalogue item details and category
     const items = await db
@@ -258,6 +287,17 @@ router.get('/:id', requireAuth, async (req: Request, res: Response) => {
         })),
         itemsByCategory,
         totalValue: totalValue.toFixed(2),
+        workflowExecution: workflowExecution && workflowExecution.length > 0 ? {
+          id: (workflowExecution[0] as any).id,
+          workflowId: (workflowExecution[0] as any).workflow_id,
+          workflowName: (workflowExecution[0] as any).workflow_name,
+          status: (workflowExecution[0] as any).status,
+          currentNodeId: (workflowExecution[0] as any).current_node_id,
+          startedAt: (workflowExecution[0] as any).started_at,
+          pausedAt: (workflowExecution[0] as any).paused_at,
+          completedAt: (workflowExecution[0] as any).completed_at,
+          errorMessage: (workflowExecution[0] as any).error_message
+        } : null
       },
     });
   } catch (error: any) {
@@ -348,9 +388,117 @@ router.post('/', requireAuth, checkPermission('requests.submit_requests'), async
 
     await db.insert(requestItems).values(requestItemsData);
 
+    // Find and execute applicable approval workflow
+    try {
+      const categoryId = categories[0]; // First category from validation
+
+      // First, check for approval workflows with 'request' trigger
+      const approvalWorkflowResults = await db
+        .select()
+        .from(approvalWorkflows)
+        .where(
+          and(
+            eq(approvalWorkflows.organization_id, user.organizationId!),
+            eq(approvalWorkflows.trigger_type, 'request'),
+            eq(approvalWorkflows.is_active, true)
+          )
+        )
+        .limit(1);
+
+      if (approvalWorkflowResults.length > 0) {
+        const workflow = approvalWorkflowResults[0];
+
+        // Get workflow levels
+        const levels = await db
+          .select()
+          .from(approvalLevels)
+          .where(eq(approvalLevels.workflow_id, workflow.id))
+          .orderBy(approvalLevels.level_order);
+
+        // Create approval records for each level
+        for (const level of levels) {
+          await db.insert(requestApprovals).values({
+            request_id: newRequest[0].id,
+            workflow_id: workflow.id,
+            level_id: level.id,
+            level_order: level.level_order,
+            status: level.level_order === 1 ? 'PENDING' : 'PENDING'
+          });
+        }
+
+        console.log(`✅ Approval workflow ${workflow.id} initialized for request ${newRequest[0].id}`);
+      }
+
+      // Also check for visual workflow builder workflows
+      const applicableWorkflows = await sql`
+        SELECT id, workflow_json
+        FROM workflows
+        WHERE organization_id = ${user.organizationId}
+          AND trigger_event = 'request_submitted'
+          AND is_active = true
+          AND (
+            applies_to IS NULL
+            OR applies_to->>'categoryId' = ${categoryId}
+            OR applies_to->>'siteId' = ${site_id}
+            OR (applies_to->>'categoryId' = ${categoryId} AND applies_to->>'siteId' = ${site_id})
+          )
+        ORDER BY
+          CASE
+            WHEN applies_to->>'categoryId' = ${categoryId} AND applies_to->>'siteId' = ${site_id} THEN 1
+            WHEN applies_to->>'categoryId' = ${categoryId} THEN 2
+            WHEN applies_to->>'siteId' = ${site_id} THEN 3
+            ELSE 4
+          END
+        LIMIT 1
+      `;
+
+      if (applicableWorkflows && applicableWorkflows.length > 0) {
+        const workflow = applicableWorkflows[0] as any;
+
+        // Build execution context
+        const executionContext: ExecutionContext = {
+          requestId: newRequest[0].id,
+          requestData: {
+            totalValue: 0, // Will be calculated
+            categoryId: categoryId,
+            siteId: site_id,
+            areaId: area_id,
+            requestorId: user.userId,
+            items: items.map((item: any) => ({
+              catalogueItemId: item.catalogue_item_id,
+              quantity: item.quantity,
+              notes: item.notes
+            }))
+          },
+          user: {
+            id: user.userId,
+            role: user.role || 'STAFF',
+            roleId: user.roleId,
+            organizationId: user.organizationId!,
+            permissions: user.permissions || []
+          }
+        };
+
+        // Execute workflow
+        workflowExecutionId = await executeWorkflow(
+          workflow.id,
+          newRequest[0].id,
+          executionContext
+        );
+
+        console.log(`✅ Workflow ${workflow.id} started for request ${newRequest[0].id}, execution: ${workflowExecutionId}`);
+      }
+    } catch (workflowError: any) {
+      console.error('⚠️ Failed to trigger workflow:', workflowError);
+      // Don't fail request creation if workflow fails
+    }
+
     res.status(201).json({
       success: true,
-      data: newRequest[0],
+      data: {
+        ...newRequest[0],
+        workflowExecutionId
+      },
       message: 'Request created successfully',
     });
   } catch (error: any) {
@@ -367,8 +515,51 @@ router.post('/:id/approve', requireAuth, checkPermission('requests.approve_reque
   try {
     const user = (req as any).user;
     const { id } = req.params;
+    const { notes } = req.body;
 
-    // Update request status
+    // Check for active workflow execution
+    const activeExecution = await sql`
+      SELECT id, current_node_id, status
+      FROM workflow_executions
+      WHERE request_id = ${id}
+        AND status IN ('in_progress', 'paused')
+      ORDER BY started_at DESC
+      LIMIT 1
+    `;
+
+    // If workflow exists and is paused, resume it
+    if (activeExecution && activeExecution.length > 0) {
+      const execution = activeExecution[0] as any;
+
+      try {
+        await resumeWorkflow(execution.id, {
+          actorId: user.userId,
+          action: 'approve',
+          notes: notes || undefined
+        });
+
+        console.log(`✅ Resumed workflow execution ${execution.id} for request ${id}`);
+
+        // Fetch updated request status (workflow might have changed it)
+        const updatedRequest = await db
+          .select()
+          .from(requests)
+          .where(eq(requests.id, id))
+          .limit(1);
+
+        return res.json({
+          success: true,
+          data: updatedRequest[0],
+          message: 'Request approved and workflow resumed',
+          workflowResumed: true
+        });
+      } catch (workflowError: any) {
+        console.error('⚠️ Failed to resume workflow:', workflowError);
+        // Fall through to legacy approval if workflow fails
+      }
+    }
+
+    // Legacy approval (no workflow or workflow failed)
     const updated = await db
       .update(requests)
       .set({
@@ -408,7 +599,49 @@ router.post('/:id/reject', requireAuth, checkPermission('requests.reject_request
     const { id } = req.params;
     const { notes } = req.body;
 
-    // Update request status
+    // Check for active workflow execution
+    const activeExecution = await sql`
+      SELECT id, current_node_id, status
+      FROM workflow_executions
+      WHERE request_id = ${id}
+        AND status IN ('in_progress', 'paused')
+      ORDER BY started_at DESC
+      LIMIT 1
+    `;
+
+    // If workflow exists and is paused, resume it with reject action
+    if (activeExecution && activeExecution.length > 0) {
+      const execution = activeExecution[0] as any;
+
+      try {
+        await resumeWorkflow(execution.id, {
+          actorId: user.userId,
+          action: 'reject',
+          notes: notes || undefined
+        });
+
+        console.log(`✅ Resumed workflow execution ${execution.id} for request ${id} (reject action)`);
+
+        // Fetch updated request status
+        const updatedRequest = await db
+          .select()
+          .from(requests)
+          .where(eq(requests.id, id))
+          .limit(1);
+
+        return res.json({
+          success: true,
+          data: updatedRequest[0],
+          message: 'Request rejected and workflow resumed',
+          workflowResumed: true
+        });
+      } catch (workflowError: any) {
+        console.error('⚠️ Failed to resume workflow:', workflowError);
+        // Fall through to legacy rejection if workflow fails
+      }
+    }
+
+    // Legacy rejection (no workflow or workflow failed)
     const updated = await db
       .update(requests)
       .set({
@@ -445,8 +678,51 @@ router.post('/:id/fulfill', requireAuth, checkPermission('requests.fulfill_reque
   try {
     const user = (req as any).user;
     const { id } = req.params;
+    const { notes } = req.body;
 
-    // Update request status
+    // Check for active workflow execution
+    const activeExecution = await sql`
+      SELECT id, current_node_id, status
+      FROM workflow_executions
+      WHERE request_id = ${id}
+        AND status IN ('in_progress', 'paused')
+      ORDER BY started_at DESC
+      LIMIT 1
+    `;
+
+    // If workflow exists and is paused, resume it with fulfill action
+    if (activeExecution && activeExecution.length > 0) {
+      const execution = activeExecution[0] as any;
+
+      try {
+        await resumeWorkflow(execution.id, {
+          actorId: user.userId,
+          action: 'fulfill',
+          notes: notes || undefined
+        });
+
+        console.log(`✅ Resumed workflow execution ${execution.id} for request ${id} (fulfill action)`);
+
+        // Fetch updated request status
+        const updatedRequest = await db
+          .select()
+          .from(requests)
+          .where(eq(requests.id, id))
+          .limit(1);
+
+        return res.json({
+          success: true,
+          data: updatedRequest[0],
+          message: 'Request fulfilled and workflow resumed',
+          workflowResumed: true
+        });
+      } catch (workflowError: any) {
+        console.error('⚠️ Failed to resume workflow:', workflowError);
+        // Fall through to legacy fulfillment if workflow fails
+      }
+    }
+
+    // Legacy fulfillment (no workflow or workflow failed)
     const updated = await db
       .update(requests)
       .set({

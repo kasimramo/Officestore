@@ -21,6 +21,7 @@ import endUsersRouter from './routes/endUsers.js';
 import { rolesRouter } from './routes/roles.js';
 import permissionsRouter from './routes/permissions.js';
 import requestsRouter from './routes/requests.js';
+import approvalWorkflowsRouter from './routes/approvalWorkflows.js';
 import { setupVite, serveStatic, log } from './vite.js';
 
 // ESM-safe path resolution
@@ -45,11 +46,43 @@ app.use(helmet({
   contentSecurityPolicy: isDevelopment ? false : undefined,
 }));
 
-// Rate limiting
+// Rate limiting - relaxed for development, stricter for production
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.'
+  windowMs: 60_000, // 1 minute window
+  max: isDevelopment ? 1000 : 100, // 100 requests per minute in production, 1000 in dev
+  message: undefined, // handled manually via handler
+  standardHeaders: true, // Return RateLimit-* headers
+  legacyHeaders: false, // Disable X-RateLimit-* headers
+  handler: (req, res, _options) => {
+    // Always return JSON for consistent error handling
+    res.set('Content-Type', 'application/json');
+    res.status(429).json({
+      success: false,
+      error: {
+        code: 'RATE_LIMITED',
+        message: 'Too many requests. Please wait one minute and try again.',
+        retryAfter: res.getHeader('Retry-After') ?? 60
+      }
+    });
+  },
+  skip: (req) => {
+    // Construct full path including baseUrl to handle mounted middleware correctly
+    const fullPath = `${req.baseUrl}${req.path}`;
+    const exemptPaths = [
+      '/api/auth/signin',
+      '/api/auth/signup',
+      '/api/auth/refresh',
+      '/api/users/me',
+      '/api/health'
+    ];
+    return exemptPaths.includes(fullPath);
+  },
+  // Optional: Log rate limit incidents for monitoring
+  onLimitReached: (req, _res, _options) => {
+    if (!isDevelopment) {
+      log(`⚠️  Rate limit reached for IP: ${req.ip} on path: ${req.baseUrl}${req.path}`);
+    }
+  }
 });
 app.use('/api/', limiter);
 
@@ -155,6 +188,7 @@ app.use('/api/end-users', endUsersRouter);
 app.use('/api/roles', rolesRouter);
 app.use('/api/permissions', permissionsRouter);
 app.use('/api/requests', requestsRouter);
+app.use('/api/workflows', approvalWorkflowsRouter);
 // Mount permissions under /api/users for frontend compatibility
 app.use('/api/users', permissionsRouter);
 

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   Bell, Search, LayoutDashboard, Users, MapPin, Package,
-  FileText, BarChart3, Settings, Plus, ChevronDown, LogOut, Shield
+  FileText, BarChart3, Settings, Plus, ChevronDown, LogOut, Shield, GitBranch
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { usePermissions } from '../hooks/usePermissions'
@@ -33,6 +33,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     // Roles - only for those with role management permissions
     if (hasPermission('users_roles.view_roles')) {
       navItems.push({ name: 'Roles', href: '/admin/roles', icon: Shield })
+    }
+
+    // Workflows - only for those with workflow management permissions
+    if (hasPermission('workflows.view_workflows')) {
+      navItems.push({ name: 'Workflows', href: '/admin/workflows', icon: GitBranch })
     }
 
     // Sites & Areas - for those with site/area view permissions

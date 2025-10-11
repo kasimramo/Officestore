@@ -101,6 +101,16 @@ class ApiClient {
       headers,
     });
 
+    // Handle rate limiting - treat like session expired
+    if (response.status === 429) {
+      const data = await response.json().catch(() => null);
+      this.handleSessionExpired();
+      throw new Error(
+        data?.error?.message ??
+        'You were rate limited. Please sign in again in a moment.'
+      );
+    }
+
     // If we get a 401, try to refresh the token (only once)
     if (response.status === 401 && endpoint !== '/api/auth/signin' && endpoint !== '/api/auth/refresh' && retryCount === 0) {
       const refreshToken = localStorage.getItem('refresh_token');

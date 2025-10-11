@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import AppLayout from './components/AppLayout'
 import { AuthProvider, useAuth } from './hooks/useAuth'
+import { PermissionsProvider } from './contexts/PermissionsContext'
 import Catalog from './pages/Catalog.tsx'
 import Requests from './pages/Requests'
 import NewRequest from './pages/NewRequest'
@@ -15,6 +16,9 @@ import AdminUsers from './pages/AdminUsers'
 import AdminSites from './pages/AdminSites'
 import AdminRoles from './pages/AdminRoles'
 import AdminRoleBuilder from './pages/AdminRoleBuilder'
+import AdminWorkflows from './pages/AdminWorkflows'
+import WorkflowBuilder from './pages/WorkflowBuilder'
+import ApprovalWorkflows from './pages/ApprovalWorkflows'
 import UserDashboard from './pages/UserDashboard'
 
 function Dashboard() {
@@ -200,6 +204,10 @@ function Login() {
   const [error, setError] = useState('')
   const { signIn, getDashboardRoute } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+
+  // Check for session timeout message from navigation state
+  const sessionMessage = (location.state as any)?.message
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -234,6 +242,12 @@ function Login() {
             <h2 className="text-2xl font-bold text-slate-900">Welcome back</h2>
             <p className="text-sm text-slate-600 mt-2">Sign in to your account to continue</p>
           </div>
+
+          {sessionMessage && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-md text-sm">
+              {sessionMessage}
+            </div>
+          )}
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
@@ -353,6 +367,7 @@ function AppRoutes() {
       <Route path="/admin/roles" element={<ProtectedRoute allowedRoles={['ADMIN']}><AppLayout><AdminRoles /></AppLayout></ProtectedRoute>} />
       <Route path="/admin/roles/new" element={<ProtectedRoute allowedRoles={['ADMIN']}><AppLayout><AdminRoleBuilder /></AppLayout></ProtectedRoute>} />
       <Route path="/admin/roles/:id" element={<ProtectedRoute allowedRoles={['ADMIN']}><AppLayout><AdminRoleBuilder /></AppLayout></ProtectedRoute>} />
+      <Route path="/admin/workflows" element={<ProtectedRoute allowedRoles={['ADMIN']}><AppLayout><ApprovalWorkflows /></AppLayout></ProtectedRoute>} />
 
       {/* Sites & Areas - accessible to all authenticated users */}
       <Route path="/admin/sites" element={<ProtectedRoute><AppLayout><AdminSites /></AppLayout></ProtectedRoute>} />
@@ -377,7 +392,9 @@ function AppRoutes() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppRoutes />
+      <PermissionsProvider>
+        <AppRoutes />
+      </PermissionsProvider>
     </AuthProvider>
   )
 }

@@ -398,3 +398,84 @@ export const userSitesRelations = relations(userSites, ({ one }) => ({
     references: [sites.id]
   })
 }));
+
+// Simple approval workflows table
+export const approvalWorkflows = pgTable('approval_workflows', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organization_id: uuid('organization_id').notNull(),
+  name: text('name').notNull(),
+  description: text('description'),
+  trigger_type: text('trigger_type').notNull().default('manual'), // manual, request, procurement, etc.
+  trigger_conditions: jsonb('trigger_conditions').default({}), // Additional conditions
+  is_default: boolean('is_default').notNull().default(false),
+  is_active: boolean('is_active').notNull().default(true),
+  created_at: timestamp('created_at').notNull().defaultNow(),
+  updated_at: timestamp('updated_at').notNull().defaultNow()
+});
+
+// Approval levels table (Level 1, Level 2, Level 3...)
+export const approvalLevels = pgTable('approval_levels', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  workflow_id: uuid('workflow_id').notNull(),
+  level_order: integer('level_order').notNull(), // 1, 2, 3...
+  role_id: uuid('role_id').notNull(), // Which role approves at this level
+  created_at: timestamp('created_at').notNull().defaultNow(),
+  updated_at: timestamp('updated_at').notNull().defaultNow()
+});
+
+// Request approvals tracking table
+export const requestApprovals = pgTable('request_approvals', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  request_id: uuid('request_id').notNull(),
+  workflow_id: uuid('workflow_id').notNull(),
+  level_id: uuid('level_id').notNull(),
+  level_order: integer('level_order').notNull(),
+  status: text('status').notNull().default('PENDING'), // PENDING, APPROVED, REJECTED
+  approved_by: uuid('approved_by'),
+  approved_at: timestamp('approved_at'),
+  rejection_reason: text('rejection_reason'),
+  created_at: timestamp('created_at').notNull().defaultNow(),
+  updated_at: timestamp('updated_at').notNull().defaultNow()
+});
+
+// Approval workflows relations
+export const approvalWorkflowsRelations = relations(approvalWorkflows, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [approvalWorkflows.organization_id],
+    references: [organizations.id]
+  }),
+  levels: many(approvalLevels),
+  requestApprovals: many(requestApprovals)
+}));
+
+// Approval levels relations
+export const approvalLevelsRelations = relations(approvalLevels, ({ one }) => ({
+  workflow: one(approvalWorkflows, {
+    fields: [approvalLevels.workflow_id],
+    references: [approvalWorkflows.id]
+  }),
+  role: one(roles, {
+    fields: [approvalLevels.role_id],
+    references: [roles.id]
+  })
+}));
+
+// Request approvals relations
+export const requestApprovalsRelations = relations(requestApprovals, ({ one }) => ({
+  request: one(requests, {
+    fields: [requestApprovals.request_id],
+    references: [requests.id]
+  }),
+  workflow: one(approvalWorkflows, {
+    fields: [requestApprovals.workflow_id],
+    references: [approvalWorkflows.id]
+  }),
+  level: one(approvalLevels, {
+    fields: [requestApprovals.level_id],
+    references: [approvalLevels.id]
+  }),
+  approvedBy: one(users, {
+    fields: [requestApprovals.approved_by],
+    references: [users.id]
+  })
+}));

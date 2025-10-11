@@ -61,3 +61,11 @@ export const db = new Proxy({} as ReturnType<typeof drizzle>, {
     return getDb()[prop as keyof ReturnType<typeof drizzle>];
   }
 });
+
+// Export sql function for raw queries (used by workflow engine)
+export function sql(strings: TemplateStringsArray, ...values: any[]) {
+  if (!queryClient) {
+    getDb(); // Initialize connection if needed
+  }
+  return queryClient!(strings, ...values);
+}

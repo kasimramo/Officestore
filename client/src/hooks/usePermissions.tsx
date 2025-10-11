@@ -1,13 +1,6 @@
-import { useEffect, useState } from 'react';
-import { api } from '../lib/api';
+import { usePermissionsContext } from '../contexts/PermissionsContext';
 
-export interface Permission {
-  category: string;
-  action: string;
-  description: string;
-  scope: string;
-  fullName: string;
-}
+export type { Permission } from '../contexts/PermissionsContext';
 
 export interface PermissionCheck {
   permission: string;
@@ -17,92 +10,11 @@ export interface PermissionCheck {
 }
 
 /**
- * Hook to get all permissions for the current user
- * @param siteId - Optional site ID for site-scoped permissions
- * @param areaId - Optional area ID for area-scoped permissions
+ * Hook to get all permissions for the current user (uses cached context)
+ * @deprecated Use usePermissionsContext() directly for better performance
  */
-export function usePermissions(siteId?: string, areaId?: string) {
-  const [permissions, setPermissions] = useState<Permission[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchPermissions = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const params = new URLSearchParams();
-        if (siteId) params.append('siteId', siteId);
-        if (areaId) params.append('areaId', areaId);
-
-        const response: any = await api.get(`/api/users/me?${params.toString()}`);
-
-        if (response.success) {
-          setPermissions(response.data.permissions);
-        } else {
-          throw new Error(response.error?.message || 'Failed to fetch permissions');
-        }
-      } catch (err: any) {
-        console.error('Error fetching permissions:', err);
-        setError(err.message || 'Failed to fetch permissions');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPermissions();
-  }, [siteId, areaId]);
-
-  /**
-   * Check if user has a specific permission
-   * @param permission - Permission to check (e.g., "inventory.view_stock_levels")
-   */
-  const hasPermission = (permission: string): boolean => {
-    return permissions.some(p => p.fullName === permission);
-  };
-
-  /**
-   * Check if user has ANY of the specified permissions
-   * @param permissionList - Array of permissions to check
-   */
-  const hasAnyPermission = (permissionList: string[]): boolean => {
-    return permissionList.some(permission => hasPermission(permission));
-  };
-
-  /**
-   * Check if user has ALL of the specified permissions
-   * @param permissionList - Array of permissions to check
-   */
-  const hasAllPermissions = (permissionList: string[]): boolean => {
-    return permissionList.every(permission => hasPermission(permission));
-  };
-
-  /**
-   * Get all permissions for a specific category
-   * @param category - Category name (e.g., "inventory", "requests")
-   */
-  const getPermissionsByCategory = (category: string): Permission[] => {
-    return permissions.filter(p => p.category === category);
-  };
-
-  /**
-   * Check if user has Super Admin access (full_admin_access)
-   */
-  const isSuperAdmin = (): boolean => {
-    return hasPermission('system.full_admin_access');
-  };
-
-  return {
-    permissions,
-    loading,
-    error,
-    hasPermission,
-    hasAnyPermission,
-    hasAllPermissions,
-    getPermissionsByCategory,
-    isSuperAdmin,
-  };
+export function usePermissions() {
+  return usePermissionsContext();
 }
 
 /**
@@ -161,16 +73,12 @@ export function RequirePermission({
   permission,
   children,
   fallback = null,
-  siteId,
-  areaId,
 }: {
   permission: string | string[];
   children: React.ReactNode;
   fallback?: React.ReactNode;
-  siteId?: string;
-  areaId?: string;
 }) {
-  const { hasPermission, hasAnyPermission, loading } = usePermissions(siteId, areaId);
+  const { hasPermission, hasAnyPermission, loading } = usePermissionsContext();
 
   if (loading) {
     return null; // or a loading spinner
@@ -194,16 +102,12 @@ export function RequireAllPermissions({
   permissions,
   children,
   fallback = null,
-  siteId,
-  areaId,
 }: {
   permissions: string[];
   children: React.ReactNode;
   fallback?: React.ReactNode;
-  siteId?: string;
-  areaId?: string;
 }) {
-  const { hasAllPermissions, loading } = usePermissions(siteId, areaId);
+  const { hasAllPermissions, loading } = usePermissionsContext();
 
   if (loading) {
     return null;
@@ -226,7 +130,7 @@ export function RequireSuperAdmin({
   children: React.ReactNode;
   fallback?: React.ReactNode;
 }) {
-  const { isSuperAdmin, loading } = usePermissions();
+  const { isSuperAdmin, loading } = usePermissionsContext();
 
   if (loading) {
     return null;

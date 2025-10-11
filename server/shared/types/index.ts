@@ -1,4 +1,5 @@
 export * from './database.js';
+export * from './workflow.js';
 
 // Re-export commonly used types
 export type {
@@ -24,3 +25,34 @@ export {
   RequestStatus,
   RequestPriority
 } from './database.js';
+
+// Re-export workflow types
+export type {
+  WorkflowDefinition,
+  WorkflowNode,
+  WorkflowExecution,
+  WorkflowHistory,
+  WorkflowTask,
+  ExecutionContext,
+  Workflow,
+  DecisionNode,
+  ActionNode,
+  AssignmentNode,
+  NotificationNode,
+  DelayNode,
+  IntegrationNode
+} from './workflow.js';
+
+export {
+  WorkflowTriggerEvent,
+  WorkflowNodeType,
+  WorkflowExecutionStatus,
+  WorkflowTaskStatus,
+  WorkflowTaskType,
+  WorkflowActionType,
+  NotificationChannel,
+  WorkflowDefinitionSchema,
+  WorkflowNodeSchema,
+  CreateWorkflowSchema,
+  UpdateWorkflowSchema
+} from './workflow.js';
