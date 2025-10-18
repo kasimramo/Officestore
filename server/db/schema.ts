@@ -96,6 +96,7 @@ export const requests = pgTable('requests', {
   approved_by: uuid('approved_by'),
   fulfilled_at: timestamp('fulfilled_at'),
   fulfilled_by: uuid('fulfilled_by'),
+  approval_workflow_id: uuid('approval_workflow_id'), // Snapshot of workflow version used
   created_at: timestamp('created_at').notNull().defaultNow(),
   updated_at: timestamp('updated_at').notNull().defaultNow()
 });
@@ -409,6 +410,12 @@ export const approvalWorkflows = pgTable('approval_workflows', {
   trigger_conditions: jsonb('trigger_conditions').default({}), // Additional conditions
   is_default: boolean('is_default').notNull().default(false),
   is_active: boolean('is_active').notNull().default(true),
+  // Versioning fields
+  version: integer('version').default(1),
+  parent_workflow_id: uuid('parent_workflow_id'), // References previous version
+  effective_from: timestamp('effective_from').defaultNow(),
+  effective_until: timestamp('effective_until'), // NULL if still active
+  updated_by: uuid('updated_by'), // References users.id
   created_at: timestamp('created_at').notNull().defaultNow(),
   updated_at: timestamp('updated_at').notNull().defaultNow()
 });
@@ -434,8 +441,22 @@ export const requestApprovals = pgTable('request_approvals', {
   approved_by: uuid('approved_by'),
   approved_at: timestamp('approved_at'),
   rejection_reason: text('rejection_reason'),
+  comments: text('comments'),
   created_at: timestamp('created_at').notNull().defaultNow(),
   updated_at: timestamp('updated_at').notNull().defaultNow()
+});
+
+// Workflow change logs table
+export const workflowChangeLogs = pgTable('workflow_change_logs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  workflow_id: uuid('workflow_id').notNull(),
+  previous_version: integer('previous_version'),
+  new_version: integer('new_version').notNull(),
+  change_type: text('change_type').notNull(),
+  change_summary: text('change_summary'),
+  changed_by: uuid('changed_by'),
+  changed_at: timestamp('changed_at').notNull().defaultNow(),
+  metadata: jsonb('metadata')
 });
 
 // Approval workflows relations

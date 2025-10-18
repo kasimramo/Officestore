@@ -6,6 +6,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { checkPermission } from '../middleware/permissions.js';
 import { executeWorkflow, resumeWorkflow, getExecutionStatus } from '../helpers/workflowEngine.js';
 import { WorkflowTriggerEvent, ExecutionContext } from '../shared/types/workflow.js';
+import { getActiveWorkflow, initializeRequestApprovals } from '../services/workflowService.js';
 
 const router = Router();
 
@@ -218,6 +219,58 @@ router.get('/:id', requireAuth, async (req: Request, res: Response) => {
       LIMIT 1
     `;
 
+    // Fetch approval workflow data if exists
+    let approvalWorkflowData = null;
+    if (request.approval_workflow_id) {
+      // Get workflow details
+      const workflow = await db
+        .select({
+          id: approvalWorkflows.id,
+          name: approvalWorkflows.name,
+        })
+        .from(approvalWorkflows)
+        .where(eq(approvalWorkflows.id, request.approval_workflow_id))
+        .limit(1);
+
+      if (workflow.length > 0) {
+        // Get approval levels with approver information
+        const approvalLevelsData = await sql`
+          SELECT
+            ra.id,
+            ra.level_order,
+            ra.status,
+            ra.approved_at,
+            ra.approved_by,
+            ra.rejection_reason,
+            ra.comments,
+            r.name as role_name,
+            u.first_name || ' ' || u.last_name as approver_name
+          FROM request_approvals ra
+          LEFT JOIN approval_levels al ON ra.level_id = al.id
+          LEFT JOIN roles r ON al.role_id = r.id
+          LEFT JOIN users u ON ra.approved_by = u.id
+          WHERE ra.request_id = ${request.id}
+          ORDER BY ra.level_order ASC
+        `;
+
+        approvalWorkflowData = {
+          id: workflow[0].id,
+          name: workflow[0].name,
+          approvalLevels: approvalLevelsData.map((level: any) => ({
+            id: level.id,
+            level_order: level.level_order,
+            status: level.status,
+            approved_at: level.approved_at,
+            approved_by: level.approved_by,
+            rejection_reason: level.rejection_reason,
+            comments: level.comments,
+            role_name: level.role_name,
+            approver_name: level.approver_name
+          }))
+        };
+      }
+    }
+
     // Fetch request items with catalogue item details and category
     const items = await db
       .select({
@@ -287,6 +340,7 @@ router.get('/:id', requireAuth, async (req: Request, res: Response) => {
         })),
         itemsByCategory,
         totalValue: totalValue.toFixed(2),
+        workflow: approvalWorkflowData,
         workflowExecution: workflowExecution && workflowExecution.length > 0 ? {
           id: (workflowExecution[0] as any).id,
           workflowId: (workflowExecution[0] as any).workflow_id,
@@ -388,48 +442,28 @@ router.post('/', requireAuth, checkPermission('requests.submit_requests'), async
 
     await db.insert(requestItems).values(requestItemsData);
 
-    // Find and execute applicable approval workflow
+    // Get active workflow for this organization and assign to request
+    let workflowExecutionId: string | undefined;
     try {
-      const categoryId = categories[0]; // First category from validation
+      const activeWorkflowId = await getActiveWorkflow(user.organizationId!);
 
-      // First, check for approval workflows with 'request' trigger
-      const approvalWorkflowResults = await db
-        .select()
-        .from(approvalWorkflows)
-        .where(
-          and(
-            eq(approvalWorkflows.organization_id, user.organizationId!),
-            eq(approvalWorkflows.trigger_type, 'request'),
-            eq(approvalWorkflows.is_active, true)
-          )
-        )
-        .limit(1);
+      if (activeWorkflowId) {
+        // Update request with workflow snapshot
+        await db
+          .update(requests)
+          .set({ approval_workflow_id: activeWorkflowId })
+          .where(eq(requests.id, newRequest[0].id));
 
-      if (approvalWorkflowResults.length > 0) {
-        const workflow = approvalWorkflowResults[0];
+        // Initialize approval entries for each level
+        await initializeRequestApprovals(newRequest[0].id, activeWorkflowId);
 
-        // Get workflow levels
-        const levels = await db
-          .select()
-          .from(approvalLevels)
-          .where(eq(approvalLevels.workflow_id, workflow.id))
-          .orderBy(approvalLevels.level_order);
-
-        // Create approval records for each level
-        for (const level of levels) {
-          await db.insert(requestApprovals).values({
-            request_id: newRequest[0].id,
-            workflow_id: workflow.id,
-            level_id: level.id,
-            level_order: level.level_order,
-            status: level.level_order === 1 ? 'PENDING' : 'PENDING'
-          });
-        }
-
-        console.log(`✅ Approval workflow ${workflow.id} initialized for request ${newRequest[0].id}`);
+        console.log(`✅ Approval workflow ${activeWorkflowId} assigned to request ${newRequest[0].id}`);
+      } else {
+        console.log(`⚠️ No active default workflow found for organization ${user.organizationId}`);
       }
 
       // Also check for visual workflow builder workflows
+      const categoryId = categories[0]; // First category from validation
       const applicableWorkflows = await sql`
         SELECT id, workflow_json
         FROM workflows
@@ -495,10 +529,7 @@ router.post('/', requireAuth, checkPermission('requests.submit_requests'), async
 
     res.status(201).json({
       success: true,
-      data: {
-        ...newRequest[0],
-        workflowExecutionId
-      },
+      data: newRequest[0],
       message: 'Request created successfully',
     });
   } catch (error: any) {
@@ -517,49 +548,124 @@ router.post('/:id/approve', requireAuth, checkPermission('requests.approve_reque
     const { id } = req.params;
     const { notes } = req.body;
 
-    // Check for active workflow execution
-    const activeExecution = await sql`
-      SELECT id, current_node_id, status
-      FROM workflow_executions
-      WHERE request_id = ${id}
-        AND status IN ('in_progress', 'paused')
-      ORDER BY started_at DESC
-      LIMIT 1
-    `;
+    // Fetch the request
+    const requestData = await db
+      .select()
+      .from(requests)
+      .where(and(eq(requests.id, id), eq(requests.organization_id, user.organizationId!)))
+      .limit(1);
 
-    // If workflow exists and is paused, resume it
-    if (activeExecution && activeExecution.length > 0) {
-      const execution = activeExecution[0] as any;
+    if (requestData.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: { message: 'Request not found' },
+      });
+    }
 
-      try {
-        await resumeWorkflow(execution.id, {
-          actorId: user.userId,
-          action: 'approve',
-          notes: notes || undefined
+    const request = requestData[0];
+
+    // Check if request has an approval workflow
+    if (request.approval_workflow_id) {
+      // Get user's role
+      const userRole = await db
+        .select({ role_id: users.role_id })
+        .from(users)
+        .where(eq(users.id, user.userId))
+        .limit(1);
+
+      if (!userRole[0]?.role_id) {
+        return res.status(403).json({
+          success: false,
+          error: { message: 'User role not found' },
         });
+      }
 
-        console.log(`✅ Resumed workflow execution ${execution.id} for request ${id}`);
+      // Find pending approval level for this user's role
+      const pendingApproval = await sql`
+        SELECT ra.id, ra.level_order, ra.status, al.role_id
+        FROM request_approvals ra
+        JOIN approval_levels al ON ra.level_id = al.id
+        WHERE ra.request_id = ${id}
+          AND ra.status = 'PENDING'
+          AND al.role_id = ${userRole[0].role_id}
+        ORDER BY ra.level_order ASC
+        LIMIT 1
+      `;
 
-        // Fetch updated request status (workflow might have changed it)
-        const updatedRequest = await db
-          .select()
-          .from(requests)
-          .where(eq(requests.id, id))
-          .limit(1);
+      if (!pendingApproval || pendingApproval.length === 0) {
+        return res.status(403).json({
+          success: false,
+          error: { message: 'You do not have permission to approve this request at this level' },
+        });
+      }
+
+      const approval = pendingApproval[0] as any;
+
+      // Update this approval level to APPROVED
+      await db
+        .update(requestApprovals)
+        .set({
+          status: 'APPROVED',
+          approved_by: user.userId,
+          approved_at: new Date(),
+          comments: notes || null,
+          updated_at: new Date(),
+        })
+        .where(eq(requestApprovals.id, approval.id));
+
+      console.log(`✅ Approval level ${approval.level_order} approved by user ${user.userId}`);
+
+      // Check if there are more approval levels
+      const nextLevel = await db
+        .select()
+        .from(requestApprovals)
+        .where(
+          and(
+            eq(requestApprovals.request_id, id),
+            eq(requestApprovals.status, 'AWAITING')
+          )
+        )
+        .orderBy(requestApprovals.level_order)
+        .limit(1);
+
+      if (nextLevel.length > 0) {
+        // Move next level to PENDING
+        await db
+          .update(requestApprovals)
+          .set({
+            status: 'PENDING',
+            updated_at: new Date(),
+          })
+          .where(eq(requestApprovals.id, nextLevel[0].id));
+
+        console.log(`✅ Advanced to approval level ${nextLevel[0].level_order}`);
 
         return res.json({
           success: true,
-          data: updatedRequest[0],
-          message: 'Request approved and workflow resumed',
-          workflowResumed: true
+          message: `Approval level ${approval.level_order} completed. Awaiting level ${nextLevel[0].level_order} approval.`,
         });
-      } catch (workflowError: any) {
-        console.error('⚠️ Failed to resume workflow:', workflowError);
-        // Fall through to legacy approval if workflow fails
+      } else {
+        // All levels approved - mark request as approved
+        await db
+          .update(requests)
+          .set({
+            status: 'approved',
+            approved_at: new Date(),
+            approved_by: user.userId,
+            updated_at: new Date(),
+          })
+          .where(eq(requests.id, id));
+
+        console.log(`✅ All approval levels completed for request ${id}`);
+
+        return res.json({
+          success: true,
+          message: 'Request fully approved',
+        });
       }
     }
 
-    // Legacy approval (no workflow or workflow failed)
+    // Legacy approval (no workflow)
     const updated = await db
       .update(requests)
       .set({
@@ -568,15 +674,8 @@ router.post('/:id/approve', requireAuth, checkPermission('requests.approve_reque
         approved_by: user.userId,
         updated_at: new Date(),
       })
-      .where(and(eq(requests.id, id), eq(requests.organization_id, user.organizationId!)))
+      .where(eq(requests.id, id))
       .returning();
-
-    if (updated.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: { message: 'Request not found' },
-      });
-    }
 
     res.json({
       success: true,
@@ -599,49 +698,90 @@ router.post('/:id/reject', requireAuth, checkPermission('requests.reject_request
     const { id } = req.params;
     const { notes } = req.body;
 
-    // Check for active workflow execution
-    const activeExecution = await sql`
-      SELECT id, current_node_id, status
-      FROM workflow_executions
-      WHERE request_id = ${id}
-        AND status IN ('in_progress', 'paused')
-      ORDER BY started_at DESC
-      LIMIT 1
-    `;
+    // Fetch the request
+    const requestData = await db
+      .select()
+      .from(requests)
+      .where(and(eq(requests.id, id), eq(requests.organization_id, user.organizationId!)))
+      .limit(1);
 
-    // If workflow exists and is paused, resume it with reject action
-    if (activeExecution && activeExecution.length > 0) {
-      const execution = activeExecution[0] as any;
-
-      try {
-        await resumeWorkflow(execution.id, {
-          actorId: user.userId,
-          action: 'reject',
-          notes: notes || undefined
-        });
-
-        console.log(`✅ Resumed workflow execution ${execution.id} for request ${id} (reject action)`);
-
-        // Fetch updated request status
-        const updatedRequest = await db
-          .select()
-          .from(requests)
-          .where(eq(requests.id, id))
-          .limit(1);
-
-        return res.json({
-          success: true,
-          data: updatedRequest[0],
-          message: 'Request rejected and workflow resumed',
-          workflowResumed: true
-        });
-      } catch (workflowError: any) {
-        console.error('⚠️ Failed to resume workflow:', workflowError);
-        // Fall through to legacy rejection if workflow fails
-      }
+    if (requestData.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: { message: 'Request not found' },
+      });
     }
 
-    // Legacy rejection (no workflow or workflow failed)
+    const request = requestData[0];
+
+    // Check if request has an approval workflow
+    if (request.approval_workflow_id) {
+      // Get user's role
+      const userRole = await db
+        .select({ role_id: users.role_id })
+        .from(users)
+        .where(eq(users.id, user.userId))
+        .limit(1);
+
+      if (!userRole[0]?.role_id) {
+        return res.status(403).json({
+          success: false,
+          error: { message: 'User role not found' },
+        });
+      }
+
+      // Find pending approval level for this user's role
+      const pendingApproval = await sql`
+        SELECT ra.id, ra.level_order, ra.status, al.role_id
+        FROM request_approvals ra
+        JOIN approval_levels al ON ra.level_id = al.id
+        WHERE ra.request_id = ${id}
+          AND ra.status = 'PENDING'
+          AND al.role_id = ${userRole[0].role_id}
+        ORDER BY ra.level_order ASC
+        LIMIT 1
+      `;
+
+      if (!pendingApproval || pendingApproval.length === 0) {
+        return res.status(403).json({
+          success: false,
+          error: { message: 'You do not have permission to reject this request at this level' },
+        });
+      }
+
+      const approval = pendingApproval[0] as any;
+
+      // Update this approval level to REJECTED
+      await db
+        .update(requestApprovals)
+        .set({
+          status: 'REJECTED',
+          approved_by: user.userId,
+          approved_at: new Date(),
+          rejection_reason: notes || 'Rejected',
+          updated_at: new Date(),
+        })
+        .where(eq(requestApprovals.id, approval.id));
+
+      // Mark the entire request as rejected
+      await db
+        .update(requests)
+        .set({
+          status: 'rejected',
+          notes: notes || null,
+          updated_at: new Date(),
+        })
+        .where(eq(requests.id, id));
+
+      console.log(`✅ Request ${id} rejected at approval level ${approval.level_order} by user ${user.userId}`);
+
+      return res.json({
+        success: true,
+        message: 'Request rejected',
+      });
+    }
+
+    // Legacy rejection (no workflow)
     const updated = await db
       .update(requests)
       .set({
@@ -649,15 +789,8 @@ router.post('/:id/reject', requireAuth, checkPermission('requests.reject_request
         notes: notes || null,
         updated_at: new Date(),
       })
-      .where(and(eq(requests.id, id), eq(requests.organization_id, user.organizationId!)))
+      .where(eq(requests.id, id))
       .returning();
-
-    if (updated.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: { message: 'Request not found' },
-      });
-    }
 
     res.json({
       success: true,

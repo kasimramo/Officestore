@@ -1,10 +1,22 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Plus, Search, Filter, Clock, CheckCircle, XCircle, Package, ChevronDown, Eye, Check, X
+  Plus, Search, Filter, Clock, CheckCircle, XCircle, Package, ChevronDown, Eye, Check, X, User
 } from 'lucide-react'
 import { apiClient } from '../lib/api'
 import { usePermissions } from '../hooks/usePermissions'
+
+type ApprovalLevel = {
+  id: string
+  level_order: number
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'AWAITING'
+  approved_by?: string
+  approved_at?: string
+  rejection_reason?: string
+  comments?: string
+  role_name?: string
+  approver_name?: string
+}
 
 type Request = {
   id: string
@@ -40,6 +52,11 @@ type Request = {
     }
   }>
   totalValue: string
+  workflow?: {
+    id: string
+    name: string
+    approvalLevels?: ApprovalLevel[]
+  }
 }
 
 export default function Requests() {
@@ -51,6 +68,7 @@ export default function Requests() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [selectedRequest, setSelectedRequest] = useState<Request | null>(null)
+  const [loadingDetails, setLoadingDetails] = useState(false)
 
   useEffect(() => {
     fetchRequests()
@@ -71,6 +89,19 @@ export default function Requests() {
       setError(err.message || 'Failed to fetch requests')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchRequestDetails = async (requestId: string) => {
+    try {
+      setLoadingDetails(true)
+      const response = await apiClient.get(`/api/requests/${requestId}`)
+      setSelectedRequest(response.data)
+    } catch (err: any) {
+      console.error('Error fetching request details:', err)
+      alert('Failed to load request details')
+    } finally {
+      setLoadingDetails(false)
     }
   }
 
@@ -266,7 +297,7 @@ export default function Requests() {
                     <RequestRow
                       key={request.id}
                       request={request}
-                      onView={() => setSelectedRequest(request)}
+                      onView={() => fetchRequestDetails(request.id)}
                       onApprove={handleApprove}
                       onReject={handleReject}
                       onFulfill={handleFulfill}
@@ -517,6 +548,71 @@ function RequestDetailsModal({
               </div>
             )}
           </div>
+
+          {/* Approval Workflow */}
+          {request.workflow && request.workflow.approvalLevels && request.workflow.approvalLevels.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-3">
+                Approval Workflow: {request.workflow.name}
+              </label>
+              <div className="border border-slate-200 rounded-lg divide-y divide-slate-200">
+                {request.workflow.approvalLevels.map((level, index) => {
+                  const statusConfig = {
+                    PENDING: { bg: 'bg-orange-100', text: 'text-orange-700', label: 'Pending' },
+                    APPROVED: { bg: 'bg-green-100', text: 'text-green-700', label: 'Approved' },
+                    REJECTED: { bg: 'bg-red-100', text: 'text-red-700', label: 'Rejected' },
+                    AWAITING: { bg: 'bg-slate-100', text: 'text-slate-600', label: 'Awaiting' },
+                  };
+                  const config = statusConfig[level.status] || statusConfig.AWAITING;
+
+                  return (
+                    <div key={level.id} className="p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-700 font-medium text-sm">
+                            {level.level_order}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-slate-900">{level.role_name || 'Unknown Role'}</p>
+                            {level.approver_name && (
+                              <div className="flex items-center gap-1 mt-1 text-xs text-slate-600">
+                                <User className="w-3 h-3" />
+                                <span>{level.approver_name}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${config.bg} ${config.text}`}>
+                          {config.label}
+                        </span>
+                      </div>
+
+                      {level.approved_at && (
+                        <div className="mt-2 text-xs text-slate-500">
+                          <span className="font-medium">
+                            {level.status === 'APPROVED' ? 'Approved' : 'Rejected'} on:
+                          </span>{' '}
+                          {new Date(level.approved_at).toLocaleString()}
+                        </div>
+                      )}
+
+                      {level.comments && (
+                        <div className="mt-2 text-xs text-slate-600 bg-slate-50 p-2 rounded">
+                          <span className="font-medium">Comments:</span> {level.comments}
+                        </div>
+                      )}
+
+                      {level.rejection_reason && (
+                        <div className="mt-2 text-xs text-red-600 bg-red-50 p-2 rounded">
+                          <span className="font-medium">Rejection Reason:</span> {level.rejection_reason}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Actions */}
