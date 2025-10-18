@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Grid3x3, List, Search, Filter, ChevronDown, ChevronRight, Package, Tag, Upload, Link, Edit, Power, PowerOff, X, Save } from 'lucide-react'
 import { apiClient } from '../lib/api.ts'
@@ -45,7 +45,7 @@ export default function Catalog() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
-  const [viewMode, setViewMode] = useState<ViewMode>('card')
+  const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [showCategoryForm, setShowCategoryForm] = useState(false)
   const [showItemForm, setShowItemForm] = useState(false)
   const [showEditItemForm, setShowEditItemForm] = useState(false)
@@ -119,29 +119,45 @@ export default function Catalog() {
     })
   }
 
-  // Group items by category
-  const groupedItems = catalogItems.reduce((acc, item) => {
-    const categoryId = item.category_id || 'uncategorized'
-    const categoryName = item.category_name || 'Uncategorized'
+  // Group items by category - include ALL categories even if they have 0 items
+  const groupedItems = React.useMemo(() => {
+    // Start with all categories (empty items array)
+    const groups: Record<string, { categoryId: string; categoryName: string; items: CatalogItem[] }> = {}
 
-    if (!acc[categoryId]) {
-      acc[categoryId] = {
-        categoryId,
-        categoryName,
+    // Add all categories first
+    categories.forEach(category => {
+      groups[category.id] = {
+        categoryId: category.id,
+        categoryName: category.name,
         items: []
       }
-    }
-    acc[categoryId].items.push(item)
-    return acc
-  }, {} as Record<string, { categoryId: string; categoryName: string; items: CatalogItem[] }>)
+    })
+
+    // Then add items to their respective categories
+    catalogItems.forEach(item => {
+      const categoryId = item.category_id || 'uncategorized'
+      const categoryName = item.category_name || 'Uncategorized'
+
+      if (!groups[categoryId]) {
+        groups[categoryId] = {
+          categoryId,
+          categoryName,
+          items: []
+        }
+      }
+      groups[categoryId].items.push(item)
+    })
+
+    return groups
+  }, [categories, catalogItems])
 
   // Auto-expand categories when data loads (only once)
   useEffect(() => {
-    if (catalogItems.length > 0 && expandedCategories.size === 0) {
+    if (categories.length > 0 && expandedCategories.size === 0) {
       const categoryIds = Object.keys(groupedItems)
       setExpandedCategories(new Set(categoryIds))
     }
-  }, [catalogItems.length, groupedItems])
+  }, [categories.length, groupedItems])
 
   return (
     <div className="mx-auto container-max px-4 sm:px-6 lg:px-8 py-6">
@@ -249,13 +265,13 @@ export default function Catalog() {
       ) : (
         /* Catalog Display - Parent-Child Structure */
         <div className="space-y-4">
-          {catalogItems.length === 0 ? (
+          {Object.keys(groupedItems).length === 0 ? (
             <div className="text-center py-12 text-slate-500">
               <div className="mx-auto w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
                 <Package className="w-8 h-8 text-slate-400" />
               </div>
-              <p className="text-lg font-semibold text-slate-900 mb-2">No catalog items found</p>
-              <p className="text-sm mt-1">Add your first category and items to get started</p>
+              <p className="text-lg font-semibold text-slate-900 mb-2">No categories found</p>
+              <p className="text-sm mt-1">Create your first category to get started</p>
               <div className="flex gap-2 justify-center mt-6">
                 <button
                   onClick={() => setShowCategoryForm(true)}
@@ -263,13 +279,6 @@ export default function Catalog() {
                 >
                   <Tag size={16} />
                   Create First Category
-                </button>
-                <button
-                  onClick={() => setShowItemForm(true)}
-                  className="bg-emerald-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-emerald-600 transition-colors flex items-center gap-2"
-                >
-                  <Package size={16} />
-                  Add First Item
                 </button>
               </div>
             </div>
@@ -320,7 +329,23 @@ export default function Catalog() {
                 {/* Items (shown when expanded) */}
                 {expandedCategories.has(group.categoryId) && (
                   <div className="bg-white">
-                    {viewMode === 'card' ? (
+                    {group.items.length === 0 ? (
+                      <div className="px-6 py-8 text-center text-slate-500">
+                        <Package className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+                        <p className="text-sm font-medium text-slate-600 mb-1">No items in this category yet</p>
+                        <p className="text-xs text-slate-500 mb-4">Add your first item to get started</p>
+                        <button
+                          onClick={() => {
+                            setSelectedCategory(group.categoryId === 'uncategorized' ? '' : group.categoryId)
+                            setShowItemForm(true)
+                          }}
+                          className="bg-emerald-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-emerald-600 transition-colors inline-flex items-center gap-2"
+                        >
+                          <Plus size={16} />
+                          Add Item
+                        </button>
+                      </div>
+                    ) : viewMode === 'card' ? (
                       <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                         {group.items.map((item) => (
                           <CatalogCard
@@ -379,6 +404,7 @@ export default function Catalog() {
           onSuccess={() => {
             setShowCategoryForm(false)
             queryClient.invalidateQueries({ queryKey: ['categories'] })
+            queryClient.refetchQueries({ queryKey: ['categories'] })
           }}
         />
       )}
