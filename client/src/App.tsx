@@ -215,9 +215,10 @@ function Login() {
     setError('')
 
     try {
-      await signIn(email, password)
-      // Let the routing system handle the redirect based on auth state
-      navigate('/')
+      const loggedInUser = await signIn(email, password)
+      // Navigate directly to the appropriate dashboard based on user role
+      const dashboardPath = getDashboardRoute(loggedInUser)
+      navigate(dashboardPath, { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')
     } finally {
