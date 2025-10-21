@@ -172,15 +172,13 @@ export default function Requests() {
               <h1 className="text-2xl font-semibold text-slate-900">Requests</h1>
               <p className="text-sm text-slate-600">Track and manage procurement requests</p>
             </div>
-            {hasPermission('requests.submit_requests') && (
-              <button
-                onClick={() => navigate('/requests/new')}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                New Request
-              </button>
-            )}
+            <button
+              onClick={() => navigate('/requests/new')}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              New Request
+            </button>
           </div>
         </div>
       </div>
@@ -236,15 +234,13 @@ export default function Requests() {
             <Package className="w-12 h-12 text-slate-400 mx-auto mb-4" />
             <p className="text-lg font-medium text-slate-900 mb-2">No requests yet</p>
             <p className="text-sm text-slate-600 mb-4">Get started by creating your first request</p>
-            {hasPermission('requests.submit_requests') && (
-              <button
-                onClick={() => navigate('/requests/new')}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Create Your First Request
-              </button>
-            )}
+            <button
+              onClick={() => navigate('/requests/new')}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Create Your First Request
+            </button>
           </div>
         ) : filteredRequests.length === 0 ? (
           <div className="bg-white rounded-lg border border-slate-200 p-12 text-center">

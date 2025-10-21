@@ -30,6 +30,7 @@ type Site = {
 type Area = {
   id: string
   name: string
+  siteId: string
 }
 
 type CartItem = {
@@ -383,32 +384,41 @@ export default function NewRequest() {
                     <label className="block text-sm font-medium text-slate-700 mb-3">
                       Area <span className="text-red-500">*</span>
                     </label>
-                    <div className="grid grid-cols-1 gap-3">
-                      {areas.map((area) => (
-                        <button
-                          key={area.id}
-                          onClick={() => setSelectedAreaId(area.id)}
-                          className={`p-4 border-2 rounded-lg text-left transition-all ${
-                            selectedAreaId === area.id
-                              ? 'border-emerald-500 bg-emerald-50'
-                              : 'border-slate-200 hover:border-emerald-300'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span
-                              className={`font-medium ${
-                                selectedAreaId === area.id ? 'text-emerald-900' : 'text-slate-900'
-                              }`}
-                            >
-                              {area.name}
-                            </span>
-                            {selectedAreaId === area.id && (
-                              <Check className="w-5 h-5 text-emerald-600" />
-                            )}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
+                    {areas.filter((area) => area.siteId === selectedSiteId).length === 0 ? (
+                      <div className="text-center py-8 px-4 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200">
+                        <p className="text-sm text-slate-600">No areas found for this site</p>
+                        <p className="text-xs text-slate-500 mt-1">Please contact your administrator to create areas for this site</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-3">
+                        {areas
+                          .filter((area) => area.siteId === selectedSiteId)
+                          .map((area) => (
+                          <button
+                            key={area.id}
+                            onClick={() => setSelectedAreaId(area.id)}
+                            className={`p-4 border-2 rounded-lg text-left transition-all ${
+                              selectedAreaId === area.id
+                                ? 'border-emerald-500 bg-emerald-50'
+                                : 'border-slate-200 hover:border-emerald-300'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span
+                                className={`font-medium ${
+                                  selectedAreaId === area.id ? 'text-emerald-900' : 'text-slate-900'
+                                }`}
+                              >
+                                {area.name}
+                              </span>
+                              {selectedAreaId === area.id && (
+                                <Check className="w-5 h-5 text-emerald-600" />
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

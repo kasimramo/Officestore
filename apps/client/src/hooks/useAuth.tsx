@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (data.success && data.data) {
-        const { user, tokens } = data.data
+        const { user, tokens, organization } = data.data
 
         const authUser: User = {
           id: user.id,
@@ -91,14 +91,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // If user has organization, fetch it separately or handle org setup
         if (user.organization_id) {
-          // For now, set a basic org structure - you might want to fetch this from API
-          const org: Org = {
-            id: user.organization_id,
-            name: 'Organization', // TODO: Fetch from API
-            slug: 'organization'
+          let resolvedOrg: Org | null = null
+
+          if (organization && organization.id === user.organization_id) {
+            resolvedOrg = {
+              id: organization.id,
+              name: organization.name,
+              slug: organization.slug
+            }
+          } else {
+            const existingOrgRaw = localStorage.getItem('current_org')
+            if (existingOrgRaw) {
+              try {
+                const parsedOrg = JSON.parse(existingOrgRaw) as Org
+                if (parsedOrg.id === user.organization_id) {
+                  resolvedOrg = parsedOrg
+                }
+              } catch {
+                // Ignore parse errors and fall back to defaults
+              }
+            }
           }
-          setOrg(org)
-          localStorage.setItem('current_org', JSON.stringify(org))
+
+          if (!resolvedOrg) {
+            resolvedOrg = {
+              id: user.organization_id,
+              name: organization?.name || 'Organization',
+              slug: organization?.slug
+            }
+          }
+
+          setOrg(resolvedOrg)
+          localStorage.setItem('current_org', JSON.stringify(resolvedOrg))
+          localStorage.removeItem('pending_org_setup')
         }
       } else {
         throw new Error('Invalid response from server')
@@ -236,4 +261,3 @@ export function useAuth() {
   if (!ctx) throw new Error('useAuth must be used within AuthProvider')
   return ctx
 }
-

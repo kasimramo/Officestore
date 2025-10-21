@@ -14,8 +14,7 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
     const organizationCategories = await db.select()
       .from(categories)
       .where(and(
-        eq(categories.organization_id, user.organizationId),
-        eq(categories.is_active, true)
+        eq(categories.organization_id, user.organizationId)
       ))
       .orderBy(categories.name);
 
@@ -177,6 +176,60 @@ router.put('/:id', requireAuth, async (req: Request, res: Response) => {
     });
   }
 });
+
+// Toggle category active status
+router.patch('/:id/toggle-status', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { id } = req.params;
+
+    // Check if category exists and belongs to user's organization
+    const existingCategory = await db.select()
+      .from(categories)
+      .where(and(
+        eq(categories.id, id),
+        eq(categories.organization_id, user.organizationId)
+      ))
+      .limit(1);
+
+    if (existingCategory.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'CATEGORY_NOT_FOUND',
+          message: 'Category not found'
+        }
+      });
+    }
+
+    // Toggle the is_active status
+    const [updatedCategory] = await db.update(categories)
+      .set({
+        is_active: !existingCategory[0].is_active,
+        updated_at: new Date()
+      })
+      .where(and(
+        eq(categories.id, id),
+        eq(categories.organization_id, user.organizationId)
+      ))
+      .returning();
+
+    res.json({
+      success: true,
+      data: updatedCategory
+    });
+  } catch (error) {
+    console.error('Error toggling category status:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'CATEGORY_TOGGLE_ERROR',
+        message: 'Failed to toggle category status'
+      }
+    });
+  }
+});
+
 
 // Delete a category (soft delete)
 router.delete('/:id', requireAuth, async (req: Request, res: Response) => {

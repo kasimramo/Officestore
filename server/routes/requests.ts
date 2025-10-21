@@ -364,7 +364,8 @@ router.get('/:id', requireAuth, async (req: Request, res: Response) => {
 });
 
 // Create new request
-router.post('/', requireAuth, checkPermission('requests.submit_requests'), async (req: Request, res: Response) => {
+// Note: All authenticated users can submit requests (core feature)
+router.post('/', requireAuth, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
     const { site_id, area_id, items, notes, priority, requested_by_date } = req.body;

@@ -99,6 +99,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           organizationId: user.organization_id
         }
 
+        // DEBUG: Log user role for dashboard routing
+        console.log('[AUTH] User signed in:', {
+          email: authUser.email,
+          role: authUser.role,
+          backendRole: user.role
+        });
+
         setUser(authUser)
 
         // Store tokens in localStorage
@@ -237,6 +244,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Route based on user role
+    console.log('[AUTH] getDashboardRoute called with role:', targetUser.role);
+
     switch (targetUser.role) {
       case 'ADMIN':
         return '/admin-dashboard'
@@ -246,6 +255,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       case 'APPROVER_L2':
         return '/user-dashboard'
       default:
+        console.warn('[AUTH] Unknown role, using fallback /dashboard:', targetUser.role);
         return '/dashboard' // fallback
     }
   }

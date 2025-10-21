@@ -50,10 +50,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       navItems.push({ name: 'Catalog', href: '/catalog', icon: Package })
     }
 
-    // Requests - for those with request permissions
-    if (hasAnyPermission(['requests.submit_requests', 'requests.view_requests'])) {
-      navItems.push({ name: 'Requests', href: '/requests', icon: FileText })
-    }
+    // Requests - available to all authenticated users
+    navItems.push({ name: 'Requests', href: '/requests', icon: FileText })
 
     // Reports - for those with reporting permissions
     if (hasPermission('reports.view_reports')) {
@@ -168,12 +166,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </div>
 
               {/* Quick Action Button */}
-              {hasPermission('requests.submit_requests') && (
-                <button className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-md bg-emerald-500 text-white text-sm font-medium hover:bg-emerald-600 transition-colors shadow-sm">
-                  <Plus className="w-4 h-4" />
-                  <span>New Request</span>
-                </button>
-              )}
+              <button
+                onClick={() => window.location.href = '/requests/new'}
+                className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-md bg-emerald-500 text-white text-sm font-medium hover:bg-emerald-600 transition-colors shadow-sm"
+              >
+                <Plus className="w-4 h-4" />
+                <span>New Request</span>
+              </button>
 
               {/* Notifications */}
               <button className="relative p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors">

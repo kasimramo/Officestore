@@ -105,7 +105,7 @@ export class AuthService {
     };
   }
 
-  async signIn(username: string, password: string): Promise<{ user: Omit<User, 'password_hash'>; tokens: AuthTokens; forcePasswordChange?: boolean }> {
+  async signIn(username: string, password: string): Promise<{ user: Omit<User, 'password_hash'>; tokens: AuthTokens; forcePasswordChange?: boolean; organization?: Organization }> {
     const [user] = await db
       .select()
       .from(users)
@@ -134,12 +134,36 @@ export class AuthService {
     // Store refresh token
     await this.storeRefreshToken(user.id, tokens.refreshToken);
 
+    let organization: Organization | undefined;
+
+    if (user.organization_id) {
+      const [orgRecord] = await db
+        .select()
+        .from(organizations)
+        .where(eq(organizations.id, user.organization_id))
+        .limit(1);
+
+      if (orgRecord) {
+        organization = {
+          id: orgRecord.id,
+          name: orgRecord.name,
+          slug: orgRecord.slug,
+          description: orgRecord.description,
+          settings: orgRecord.settings,
+          is_active: orgRecord.is_active,
+          created_at: orgRecord.created_at,
+          updated_at: orgRecord.updated_at
+        };
+      }
+    }
+
     const { password_hash, ...userWithoutPassword } = user;
 
     return {
       user: userWithoutPassword,
       tokens,
-      forcePasswordChange: user.force_password_change
+      forcePasswordChange: user.force_password_change,
+      organization
     };
   }
 

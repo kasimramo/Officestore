@@ -105,7 +105,7 @@ export class AuthService {
     };
   }
 
-  async signIn(username: string, password: string): Promise<{ user: Omit<User, 'password_hash'>; tokens: AuthTokens; forcePasswordChange?: boolean }> {
+  async signIn(username: string, password: string): Promise<{ user: Omit<User, 'password_hash'>; tokens: AuthTokens; forcePasswordChange?: boolean; organization?: Organization }> {
     // 1) Try platform users table first (admins, procurement, approvers, staff-in-users)
     const [user] = await db
       .select()
@@ -119,11 +119,14 @@ export class AuthService {
     if (user) {
       const isValidPassword = await verifyPassword(password, user.password_hash);
       if (isValidPassword) {
+        // CRITICAL: Ensure role is never null - default to STAFF if not set
+        const effectiveRole = user.role || 'STAFF';
+
         const userPayload: TokenPayload = {
           userId: user.id,
           username: user.username,
           email: user.email || undefined,
-          role: user.role,
+          role: effectiveRole,
           organizationId: user.organization_id || undefined
         };
 
@@ -132,12 +135,38 @@ export class AuthService {
         // Store refresh token in main sessions
         await this.storeRefreshToken(user.id, tokens.refreshToken);
 
+        // Ensure role is set in the returned user object as well
         const { password_hash, ...userWithoutPassword } = user;
+        userWithoutPassword.role = effectiveRole;
+
+        let organization: Organization | undefined;
+
+        if (user.organization_id) {
+          const [orgRecord] = await db
+            .select()
+            .from(organizations)
+            .where(eq(organizations.id, user.organization_id))
+            .limit(1);
+
+          if (orgRecord) {
+            organization = {
+              id: orgRecord.id,
+              name: orgRecord.name,
+              slug: orgRecord.slug,
+              description: orgRecord.description,
+              settings: orgRecord.settings,
+              is_active: orgRecord.is_active,
+              created_at: orgRecord.created_at,
+              updated_at: orgRecord.updated_at
+            };
+          }
+        }
 
         return {
           user: userWithoutPassword,
           tokens,
-          forcePasswordChange: user.force_password_change
+          forcePasswordChange: user.force_password_change,
+          organization
         };
       }
       // If user found but password doesn't match, continue to check end_users below
@@ -177,16 +206,50 @@ export class AuthService {
     await this.storeRefreshToken(endUser.id, tokens.refreshToken);
 
     // Map endUser row to User-like shape expected by client
+    // CRITICAL: Ensure role field is preserved for proper dashboard routing
     const { password_hash: _ignored, last_login_at, role_id, ...rest } = endUser as any;
     const normalizedUser: any = {
       ...rest,
+      role: endUser.role || 'STAFF', // Ensure role is always set, default to STAFF
       email_verified: false, // end_users do not track email verification
     };
+
+    let organization: Organization | undefined;
+
+    if (endUser.organization_id) {
+      const [orgRecord] = await db
+        .select()
+        .from(organizations)
+        .where(eq(organizations.id, endUser.organization_id))
+        .limit(1);
+
+      if (orgRecord) {
+        organization = {
+          id: orgRecord.id,
+          name: orgRecord.name,
+          slug: orgRecord.slug,
+          description: orgRecord.description,
+          settings: orgRecord.settings,
+          is_active: orgRecord.is_active,
+          created_at: orgRecord.created_at,
+          updated_at: orgRecord.updated_at
+        };
+      }
+    }
+
+    // DEBUG: Log end user login info
+    console.log('[AUTH] End user login:', {
+      userId: endUser.id,
+      username: endUser.username,
+      role: endUser.role,
+      normalizedRole: normalizedUser.role
+    });
 
     return {
       user: normalizedUser as Omit<User, 'password_hash'>,
       tokens,
-      forcePasswordChange: endUser.force_password_change
+      forcePasswordChange: endUser.force_password_change,
+      organization
     };
   }
 

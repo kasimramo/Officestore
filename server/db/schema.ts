@@ -10,8 +10,8 @@ export const users = pgTable('users', {
   password_hash: text('password_hash'), // Optional for OAuth users
   first_name: text('first_name').notNull(),
   last_name: text('last_name').notNull(),
-  role: text('role').$type<UserRole>().notNull(), // Legacy - will migrate to role_id
-  role_id: uuid('role_id'), // New role reference
+  role: text('role').$type<UserRole>(), // Legacy - nullable now, assigned later
+  role_id: uuid('role_id'), // New role reference - nullable, assigned via "Assign Roles & Access"
   organization_id: uuid('organization_id'),
   // Google OAuth fields
   google_id: text('google_id').unique(),
@@ -154,13 +154,13 @@ export const userInvitations = pgTable('user_invitations', {
 export const endUsers = pgTable('end_users', {
   id: uuid('id').primaryKey().defaultRandom(),
   organization_id: uuid('organization_id').notNull(),
-  username: text('username').notNull(),
+  username: text('username').notNull(), // Email is used as username
   password_hash: text('password_hash').notNull(),
-  email: text('email'),
+  email: text('email').notNull(), // Now required - same as username
   first_name: text('first_name').notNull(),
   last_name: text('last_name').notNull(),
-  role: text('role').$type<'STAFF' | 'PROCUREMENT' | 'APPROVER_L1' | 'APPROVER_L2'>().notNull(), // Legacy - will migrate to role_id
-  role_id: uuid('role_id'), // New role reference
+  role: text('role').$type<'STAFF' | 'PROCUREMENT' | 'APPROVER_L1' | 'APPROVER_L2'>(), // Legacy - nullable now, assigned later
+  role_id: uuid('role_id'), // New role reference - nullable, assigned via "Assign Roles & Access"
   is_active: boolean('is_active').notNull().default(true),
   force_password_change: boolean('force_password_change').notNull().default(true),
   created_by: uuid('created_by').notNull(),

@@ -1,16 +1,29 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Bell, FilePlus, Settings2, RefreshCcw, Flag, Check, MessageSquare,
   ShoppingCart, Download, Sliders, CheckCircle2, Truck, AlertTriangle,
   UploadCloud, TrendingUp, Timer, TriangleAlert
 } from 'lucide-react'
+import { useAuth } from '../hooks/useAuth'
 
 export default function AdminDashboard() {
+  const { org } = useAuth()
+
   return (
     <div className="bg-slate-50">
       {/* Content */}
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-900">Admin Dashboard</h1>
+            {org?.name && (
+              <p className="text-sm text-slate-500 mt-1">
+                Managing <span className="font-medium text-slate-700">{org.name}</span>
+              </p>
+            )}
+          </div>
+        </div>
+
         {/* KPI Row */}
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">

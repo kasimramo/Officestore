@@ -78,84 +78,88 @@ router.get('/', async (req, res) => {
 
 // POST /api/end-users - Create a new end user (without role/site, assign later)
 router.post('/', async (req, res) => {
+  console.log('[END-USER] POST route handler called');
+  console.log('[END-USER] Request body:', JSON.stringify(req.body, null, 2));
+  console.log('[END-USER] User context:', req.user ? { userId: req.user.userId, orgId: req.user.organizationId } : 'NO USER');
+
   try {
     const organizationId = req.user!.organizationId;
     const adminId = req.user!.userId;
-    const { username, email, firstName, lastName, password } = req.body;
+    const { email, firstName, lastName, password } = req.body;
 
-    // Validate required fields
-    if (!username || !firstName || !lastName || !password) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    // Validate required fields (email is now the username)
+    if (!email || !firstName || !lastName || !password) {
+      const missing = [];
+      if (!email) missing.push('email');
+      if (!firstName) missing.push('firstName');
+      if (!lastName) missing.push('lastName');
+      if (!password) missing.push('password');
+      return res.status(400).json({
+        error: `Missing required fields: ${missing.join(', ')}. Received: ${JSON.stringify({ email: !!email, firstName: !!firstName, lastName: !!lastName, password: !!password })}`
+      });
     }
 
-    // Check if username already exists in this organization
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    // Check if email already exists in this organization (email is the username)
     const existingUser = await db
       .select()
       .from(endUsers)
       .where(
         and(
-          eq(endUsers.username, username),
+          eq(endUsers.email, email),
           eq(endUsers.organization_id, organizationId)
         )
       )
       .limit(1);
 
     if (existingUser.length > 0) {
-      return res.status(409).json({ error: 'Username already exists' });
+      return res.status(409).json({ error: 'Email already exists' });
     }
 
     // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Get default STAFF role for the organization
-    const defaultRole = await db
-      .select()
-      .from(roles)
-      .where(and(eq(roles.organization_id, organizationId), eq(roles.name, 'STAFF')))
-      .limit(1);
-
-    if (defaultRole.length === 0) {
-      return res.status(500).json({ error: 'Default STAFF role not found. Please create roles first.' });
-    }
-
-    // Create user with default STAFF role
+    // Create user with email as username (NO role assignment - roles assigned later)
     const [newUser] = await db
       .insert(endUsers)
       .values({
         organization_id: organizationId,
-        username,
-        email: email || null,
+        username: email, // Use email as username
+        email: email, // Email is now required
         password_hash: passwordHash,
         first_name: firstName,
         last_name: lastName,
-        role: 'STAFF', // Keep legacy role for backward compatibility
-        role_id: defaultRole[0].id, // Assign default STAFF role
+        role: null, // No role assigned initially
+        role_id: null, // Role will be assigned later via "Assign Roles & Access" button
         is_active: true,
         force_password_change: true, // Always force password change on first login
         created_by: adminId
       })
       .returning();
 
-    // Sync to main users table (insert or update)
-    const condition = email
-      ? or(eq(users.username, username), eq(users.email, email))
-      : eq(users.username, username);
+    // Sync to main users table (insert or update) - NO role assignment
     const [existingMain] = await db
       .select()
       .from(users)
-      .where(condition)
+      .where(or(eq(users.username, email), eq(users.email, email)))
       .limit(1);
 
     if (existingMain) {
       await db
         .update(users)
         .set({
-          email: email || existingMain.email || null,
+          username: email,
+          email: email,
           password_hash: passwordHash,
           first_name: firstName,
           last_name: lastName,
-          role: 'STAFF',
-          role_id: defaultRole[0].id,
+          role: null, // No role assigned initially
+          role_id: null, // Role will be assigned later
           organization_id: organizationId,
           is_active: true,
           force_password_change: true,
@@ -164,13 +168,13 @@ router.post('/', async (req, res) => {
         .where(eq(users.id, existingMain.id));
     } else {
       await db.insert(users).values({
-        username,
-        email: email || null,
+        username: email,
+        email: email,
         password_hash: passwordHash,
         first_name: firstName,
         last_name: lastName,
-        role: 'STAFF' as any,
-        role_id: defaultRole[0].id,
+        role: null, // No role assigned initially
+        role_id: null, // Role will be assigned later
         organization_id: organizationId,
         is_active: true,
         email_verified: false,
@@ -179,22 +183,7 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // Ensure a base org-level role assignment exists in user_roles
-    const [mainUser] = await db
-      .select()
-      .from(users)
-      .where(or(eq(users.username, username), email ? eq(users.email, email) : eq(users.username, '__no_match__')))
-      .limit(1)
-
-    if (mainUser) {
-      await db.execute(sql`
-        INSERT INTO user_roles (user_id, role_id, site_id, area_id)
-        SELECT ${mainUser.id}::uuid, ${defaultRole[0].id}::uuid, NULL::uuid, NULL::uuid
-        WHERE NOT EXISTS (
-          SELECT 1 FROM user_roles WHERE user_id = ${mainUser.id}::uuid AND role_id = ${defaultRole[0].id}::uuid AND site_id IS NULL AND area_id IS NULL
-        )
-      `)
-    }
+    // Note: No user_roles entry created - roles will be assigned via "Assign Roles & Access" button
 
     res.status(201).json({
       success: true,
@@ -504,16 +493,35 @@ router.get('/:id/roles', checkPermission('users_roles.view_users'), async (req, 
     const organizationId = req.user!.organizationId;
 
     // Verify user belongs to organization
-    const [user] = await db
+    const [endUser] = await db
       .select()
       .from(endUsers)
       .where(and(eq(endUsers.id, userId), eq(endUsers.organization_id, organizationId)))
       .limit(1);
 
-    if (!user) {
+    if (!endUser) {
       return res.status(404).json({
         success: false,
         error: { code: 'USER_NOT_FOUND', message: 'User not found' }
+      });
+    }
+
+    // Find corresponding user in main users table
+    const [mainUser] = await db
+      .select()
+      .from(users)
+      .where(
+        or(
+          eq(users.username, endUser.username),
+          endUser.email ? eq(users.email, endUser.email) : eq(users.username, '__no_match__')
+        )
+      )
+      .limit(1);
+
+    if (!mainUser) {
+      return res.json({
+        success: true,
+        data: [] // No roles if no main user found
       });
     }
 
@@ -534,13 +542,16 @@ router.get('/:id/roles', checkPermission('users_roles.view_users'), async (req, 
       JOIN roles r ON ur.role_id = r.id
       LEFT JOIN sites s ON ur.site_id = s.id
       LEFT JOIN areas a ON ur.area_id = a.id
-      WHERE ur.user_id = ${userId}::uuid
+      WHERE ur.user_id = ${mainUser.id}::uuid
       ORDER BY r.name
     `);
 
+    // Handle both array and object result formats
+    const rows: any[] = Array.isArray(result) ? (result as any[]) : (result as any).rows || [];
+
     res.json({
       success: true,
-      data: result.rows.map((row: any) => ({
+      data: rows.map((row: any) => ({
         id: row.id,
         name: row.name,
         description: row.description,
@@ -577,22 +588,54 @@ router.post('/:id/roles', checkPermission('users_roles.edit_users'), async (req,
     }
 
     // Verify user belongs to organization
-    const [user] = await db
+    const [endUser] = await db
       .select()
       .from(endUsers)
       .where(and(eq(endUsers.id, userId), eq(endUsers.organization_id, organizationId)))
       .limit(1);
 
-    if (!user) {
+    if (!endUser) {
       return res.status(404).json({
         success: false,
         error: { code: 'USER_NOT_FOUND', message: 'User not found' }
       });
     }
 
-    // Remove existing role assignments
+    // Find corresponding user in main users table
+    let [mainUser] = await db
+      .select()
+      .from(users)
+      .where(
+        or(
+          eq(users.username, endUser.username),
+          endUser.email ? eq(users.email, endUser.email) : eq(users.username, '__no_match__')
+        )
+      )
+      .limit(1);
+
+    // If no main user found, create one
+    if (!mainUser) {
+      const [createdUser] = await db.insert(users).values({
+        username: endUser.username,
+        email: endUser.email || null,
+        password_hash: endUser.password_hash,
+        first_name: endUser.first_name,
+        last_name: endUser.last_name,
+        role: endUser.role as any,
+        role_id: endUser.role_id,
+        organization_id: organizationId,
+        is_active: endUser.is_active,
+        email_verified: false,
+        force_password_change: endUser.force_password_change,
+        created_by: req.user!.userId,
+      }).returning();
+
+      mainUser = createdUser;
+    }
+
+    // Remove existing role assignments using main user ID
     await db.execute(sql`
-      DELETE FROM user_roles WHERE user_id = ${userId}::uuid
+      DELETE FROM user_roles WHERE user_id = ${mainUser.id}::uuid
     `);
 
     // Add new role assignments
@@ -605,14 +648,15 @@ router.post('/:id/roles', checkPermission('users_roles.edit_users'), async (req,
           SELECT id FROM roles WHERE id = ${roleId}::uuid AND organization_id = ${organizationId}::uuid
         `);
 
-        if (roleCheck.rows.length === 0) {
+        const roleRows: any[] = Array.isArray(roleCheck) ? (roleCheck as any[]) : (roleCheck as any).rows || [];
+        if (roleRows.length === 0) {
           continue; // Skip invalid roles
         }
 
         await db.execute(sql`
           INSERT INTO user_roles (user_id, role_id, site_id, area_id)
           VALUES (
-            ${userId}::uuid,
+            ${mainUser.id}::uuid,
             ${roleId}::uuid,
             ${siteId || null}::uuid,
             ${areaId || null}::uuid
@@ -634,13 +678,16 @@ router.post('/:id/roles', checkPermission('users_roles.edit_users'), async (req,
         ur.area_id
       FROM user_roles ur
       JOIN roles r ON ur.role_id = r.id
-      WHERE ur.user_id = ${userId}::uuid
+      WHERE ur.user_id = ${mainUser.id}::uuid
       ORDER BY r.name
     `);
 
+    // Handle both array and object result formats
+    const rows: any[] = Array.isArray(result) ? (result as any[]) : (result as any).rows || [];
+
     res.json({
       success: true,
-      data: result.rows.map((row: any) => ({
+      data: rows.map((row: any) => ({
         id: row.id,
         name: row.name,
         description: row.description,

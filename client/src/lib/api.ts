@@ -173,7 +173,9 @@ class ApiClient {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || `HTTP error! status: ${response.status}`);
+      const errorMessage = errorData.error?.message || errorData.error || `HTTP error! status: ${response.status}`;
+      console.error('[API] Request failed:', { endpoint, status: response.status, errorData });
+      throw new Error(errorMessage);
     }
 
     return response.json();
@@ -247,6 +249,12 @@ class ApiClient {
   async deleteCategory(id: string) {
     return this.request(`/api/categories/${id}`, {
       method: 'DELETE',
+    });
+  }
+
+  async toggleCategoryStatus(id: string) {
+    return this.request(`/api/categories/${id}/toggle-status`, {
+      method: 'PATCH',
     });
   }
 

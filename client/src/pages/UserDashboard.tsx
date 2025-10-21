@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 type StockItem = {
   id: string
@@ -20,8 +21,8 @@ type UserRequest = {
 }
 
 export default function UserDashboard() {
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<'requests' | 'stock'>('requests')
-  const [showNewRequest, setShowNewRequest] = useState(false)
 
   // Mock data - in real app this would come from API based on user's site/area access
   const [requests] = useState<UserRequest[]>([
@@ -159,7 +160,7 @@ export default function UserDashboard() {
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-lg font-semibold text-slate-900">My Requests</h3>
                 <button
-                  onClick={() => setShowNewRequest(true)}
+                  onClick={() => navigate('/requests/new')}
                   className="bg-emerald-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-emerald-600 transition-colors"
                 >
                   New Request
@@ -259,11 +260,6 @@ export default function UserDashboard() {
           )}
         </div>
       </div>
-
-      {/* New Request Modal */}
-      {showNewRequest && (
-        <NewRequestModal onClose={() => setShowNewRequest(false)} />
-      )}
     </div>
   )
 }
@@ -294,163 +290,4 @@ function getPriorityColor(priority: string): string {
     default:
       return 'bg-gray-100 text-gray-800'
   }
-}
-
-function NewRequestModal({ onClose }: { onClose: () => void }) {
-  const [formData, setFormData] = useState({
-    items: [{ name: '', quantity: 1, unit: '' }],
-    priority: 'MEDIUM',
-    notes: ''
-  })
-
-  const availableItems = [
-    { name: 'Coffee Pods', unit: 'pieces' },
-    { name: 'Paper Towels', unit: 'rolls' },
-    { name: 'Printer Paper', unit: 'reams' },
-    { name: 'Cleaning Supplies', unit: 'bottles' },
-    { name: 'Pens', unit: 'pieces' }
-  ]
-
-  const addItem = () => {
-    setFormData({
-      ...formData,
-      items: [...formData.items, { name: '', quantity: 1, unit: '' }]
-    })
-  }
-
-  const removeItem = (index: number) => {
-    setFormData({
-      ...formData,
-      items: formData.items.filter((_, i) => i !== index)
-    })
-  }
-
-  const updateItem = (index: number, field: string, value: string | number) => {
-    const updatedItems = formData.items.map((item, i) =>
-      i === index ? { ...item, [field]: value } : item
-    )
-    setFormData({ ...formData, items: updatedItems })
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    // Handle request submission
-    console.log('New request:', formData)
-    onClose()
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-semibold text-slate-900">New Request</h3>
-            <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Items Requested</label>
-              {formData.items.map((item, index) => (
-                <div key={index} className="flex gap-2 mb-2">
-                  <select
-                    value={item.name}
-                    onChange={(e) => {
-                      const selectedItem = availableItems.find(ai => ai.name === e.target.value)
-                      updateItem(index, 'name', e.target.value)
-                      if (selectedItem) {
-                        updateItem(index, 'unit', selectedItem.unit)
-                      }
-                    }}
-                    className="flex-1 px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  >
-                    <option value="">Select item</option>
-                    {availableItems.map(ai => (
-                      <option key={ai.name} value={ai.name}>{ai.name}</option>
-                    ))}
-                  </select>
-                  <input
-                    type="number"
-                    value={item.quantity}
-                    onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value))}
-                    min="1"
-                    className="w-20 px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                  <input
-                    type="text"
-                    value={item.unit}
-                    readOnly
-                    className="w-20 px-3 py-2 border border-slate-300 rounded-md text-sm bg-slate-50"
-                  />
-                  {formData.items.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeItem(index)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={addItem}
-                className="text-emerald-600 hover:text-blue-800 text-sm"
-              >
-                + Add another item
-              </button>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Priority</label>
-              <select
-                value={formData.priority}
-                onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="LOW">Low - When convenient</option>
-                <option value="MEDIUM">Medium - Within a week</option>
-                <option value="HIGH">High - Urgent</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Notes (Optional)</label>
-              <textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Any additional information about this request"
-                rows={3}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-
-            <div className="flex justify-end space-x-3 pt-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={!formData.items[0].name}
-                className="px-4 py-2 text-sm font-medium text-white bg-emerald-500 rounded-md hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Submit Request
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  )
 }

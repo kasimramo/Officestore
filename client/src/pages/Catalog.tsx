@@ -106,6 +106,19 @@ export default function Catalog() {
     }
   })
 
+  // Toggle category status mutation
+  const toggleCategoryStatusMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const result = await apiClient.toggleCategoryStatus(id)
+      return result.data as Category
+    },
+    onSuccess: () => {
+      // Invalidate categories to update the list
+      queryClient.invalidateQueries({ queryKey: ['categories'] })
+      queryClient.refetchQueries({ queryKey: ['categories'] })
+    }
+  })
+
   // Toggle category expansion
   const toggleCategoryExpansion = (categoryId: string) => {
     setExpandedCategories(prev => {
@@ -122,13 +135,14 @@ export default function Catalog() {
   // Group items by category - include ALL categories even if they have 0 items
   const groupedItems = React.useMemo(() => {
     // Start with all categories (empty items array)
-    const groups: Record<string, { categoryId: string; categoryName: string; items: CatalogItem[] }> = {}
+    const groups: Record<string, { categoryId: string; categoryName: string; isActive: boolean; items: CatalogItem[] }> = {}
 
     // Add all categories first
     categories.forEach(category => {
       groups[category.id] = {
         categoryId: category.id,
         categoryName: category.name,
+        isActive: category.is_active,
         items: []
       }
     })
@@ -142,6 +156,7 @@ export default function Catalog() {
         groups[categoryId] = {
           categoryId,
           categoryName,
+          isActive: true,
           items: []
         }
       }
@@ -307,10 +322,37 @@ export default function Catalog() {
                           <span className="text-xs text-slate-500">
                             {group.items.length} item{group.items.length !== 1 ? 's' : ''}
                           </span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                            group.isActive
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-red-100 text-red-700'
+                          }`}>
+                            {group.isActive ? 'Active' : 'Inactive'}
+                          </span>
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
+                      <RequirePermission permission="catalogue.manage_categories">
+                        <button
+                          onClick={async () => {
+                            try {
+                              await toggleCategoryStatusMutation.mutateAsync(group.categoryId)
+                            } catch (error) {
+                              console.error('Failed to toggle category status:', error)
+                              alert(error instanceof Error ? error.message : 'Failed to toggle category status')
+                            }
+                          }}
+                          className={`p-1.5 rounded-md transition-colors ${
+                            group.isActive
+                              ? 'text-red-600 hover:text-red-800 hover:bg-red-100'
+                              : 'text-green-600 hover:text-green-800 hover:bg-green-100'
+                          }`}
+                          title={group.isActive ? 'Deactivate Category' : 'Activate Category'}
+                        >
+                          {group.isActive ? <PowerOff className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
+                        </button>
+                      </RequirePermission>
                       <button
                         onClick={() => {
                           // Set selected category for new item form
@@ -496,11 +538,9 @@ function CatalogCard({ item, onEdit, onToggleStatus }: {
         </div>
 
         <div className="flex gap-1.5 pt-2">
-          {hasPermission('requests.submit_requests') && (
-            <button className="flex-1 bg-emerald-500 text-white py-1.5 px-2 rounded text-xs font-medium hover:bg-emerald-600 transition-colors">
-              Request
-            </button>
-          )}
+          <button className="flex-1 bg-emerald-500 text-white py-1.5 px-2 rounded text-xs font-medium hover:bg-emerald-600 transition-colors">
+            Request
+          </button>
           {hasPermission('catalogue.edit_items') && (
             <button
               onClick={() => onEdit(item)}

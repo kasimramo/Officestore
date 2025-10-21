@@ -95,7 +95,8 @@ router.post('/signin', validateBody(signInSchema), async (req: Request, res: Res
       success: true,
       data: {
         user: result.user,
-        tokens: result.tokens
+        tokens: result.tokens,
+        organization: result.organization
       }
     });
   } catch (error: any) {

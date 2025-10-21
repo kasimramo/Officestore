@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { apiClient } from '../lib/api'
 import { usePermissions, RequirePermission } from '../hooks/usePermissions'
+import { AccessAndRoleModal } from '../components/AccessAndRoleModal'
+import { UserPlus, Edit3, Shield, Key, Power, Trash2 } from 'lucide-react'
 
 type EndUser = {
   id: string
@@ -17,6 +19,18 @@ type EndUser = {
   isActive: boolean
   createdAt: string
   lastLoginAt?: string
+  roleAssignments?: Array<{
+    id: string
+    name: string
+    description: string
+    scope: string
+    color: string
+    isSystem: boolean
+    siteId?: string
+    areaId?: string
+    siteName?: string
+    areaName?: string
+  }>
 }
 
 type Site = {
@@ -60,7 +74,28 @@ export default function AdminUsers() {
     try {
       setLoading(true)
       const response = await apiClient.get('/api/end-users')
-      setUsers(response.data || [])
+      const usersData = response.data || []
+
+      // Fetch role assignments for each user
+      const usersWithRoles = await Promise.all(
+        usersData.map(async (user: EndUser) => {
+          try {
+            const rolesResponse = await apiClient.get(`/api/end-users/${user.id}/roles`)
+            return {
+              ...user,
+              roleAssignments: rolesResponse.data || []
+            }
+          } catch (err) {
+            console.error(`Error fetching roles for user ${user.id}:`, err)
+            return {
+              ...user,
+              roleAssignments: []
+            }
+          }
+        })
+      )
+
+      setUsers(usersWithRoles)
     } catch (err: any) {
       console.error('Error fetching users:', err)
       setError(err.message || 'Failed to fetch users')
@@ -120,8 +155,9 @@ export default function AdminUsers() {
             <RequirePermission permission="users_roles.create_users">
               <button
                 onClick={() => setShowCreateUser(true)}
-                className="bg-emerald-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-emerald-600 transition-colors"
+                className="flex items-center gap-2 bg-emerald-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-emerald-600 transition-colors"
               >
+                <UserPlus className="w-4 h-4" />
                 Create User
               </button>
             </RequirePermission>
@@ -163,7 +199,7 @@ export default function AdminUsers() {
             <div className="text-sm text-slate-600">Staff Users</div>
           </div>
           <div className="bg-white rounded-lg border border-slate-200 p-6">
-            <div className="text-2xl font-bold text-purple-600">{users.filter(u => u.role.includes('APPROVER')).length}</div>
+            <div className="text-2xl font-bold text-purple-600">{users.filter(u => u.role?.includes('APPROVER')).length}</div>
             <div className="text-sm text-slate-600">Approvers</div>
           </div>
         </div>
@@ -185,8 +221,7 @@ export default function AdminUsers() {
                 <thead className="bg-slate-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">User</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Role</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Access</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Role & Access</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Last Login</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
@@ -198,17 +233,39 @@ export default function AdminUsers() {
                       <td className="px-6 py-2.5 whitespace-nowrap">
                         <div>
                           <div className="text-sm font-medium text-slate-900">{user.firstName} {user.lastName}</div>
-                          <div className="text-xs text-slate-500">@{user.username}</div>
+                          <div className="text-xs text-slate-500">{user.email}</div>
                         </div>
                       </td>
-                      <td className="px-6 py-2.5 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${getRoleBadgeColor(user.role)}`}>
-                          {user.role}
-                        </span>
-                      </td>
                       <td className="px-6 py-2.5">
-                        <div className="text-xs text-slate-600">
-                          <div className="truncate max-w-xs">Sites: {user.sites.length > 0 ? user.sites.map(s => s.name).join(', ') : 'None'}</div>
+                        <div className="space-y-1.5">
+                          {user.roleAssignments && user.roleAssignments.length > 0 ? (
+                            user.roleAssignments.map((roleAssignment, idx) => (
+                              <div key={idx} className="flex items-center gap-2">
+                                <span
+                                  className="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full whitespace-nowrap"
+                                  style={{
+                                    backgroundColor: roleAssignment.color ? `${roleAssignment.color}20` : '#e2e8f0',
+                                    color: roleAssignment.color || '#475569'
+                                  }}
+                                >
+                                  {roleAssignment.name}
+                                </span>
+                                <span className="text-xs text-slate-600">
+                                  {roleAssignment.siteName || roleAssignment.areaName ? (
+                                    <>
+                                      {roleAssignment.siteName && <span>{roleAssignment.siteName}</span>}
+                                      {roleAssignment.siteName && roleAssignment.areaName && <span> → </span>}
+                                      {roleAssignment.areaName && <span>{roleAssignment.areaName}</span>}
+                                    </>
+                                  ) : (
+                                    <span className="text-slate-400">Organization-wide</span>
+                                  )}
+                                </span>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="text-xs text-slate-400">No access assigned</div>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-2.5 whitespace-nowrap">
@@ -219,47 +276,49 @@ export default function AdminUsers() {
                       <td className="px-6 py-2.5 whitespace-nowrap text-xs text-slate-500">
                         {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleDateString() : 'Never'}
                       </td>
-                      <td className="px-6 py-2.5 whitespace-nowrap text-xs font-medium space-x-2">
-                        {hasPermission('users_roles.edit_users') && (
-                          <button
-                            onClick={() => setEditingUser(user)}
-                            className="text-emerald-600 hover:text-emerald-900"
-                          >
-                            Edit
-                          </button>
-                        )}
-                        {hasPermission('users_roles.edit_users') && (
-                          <button
-                            onClick={() => setAssigningRole(user)}
-                            className="text-blue-600 hover:text-blue-900"
-                          >
-                            Role
-                          </button>
-                        )}
-                        {hasPermission('users_roles.edit_users') && (
-                          <button
-                            onClick={() => setAssigningAccess(user)}
-                            className="text-purple-600 hover:text-purple-900"
-                          >
-                            Access
-                          </button>
-                        )}
-                        {hasPermission('users_roles.edit_users') && (
-                          <button
-                            onClick={() => setResettingPassword(user)}
-                            className="text-orange-600 hover:text-orange-900"
-                          >
-                            Password
-                          </button>
-                        )}
-                        {hasPermission('users_roles.deactivate_users') && (
-                          <button
-                            onClick={() => handleToggleStatus(user.id, user.isActive)}
-                            className={user.isActive ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'}
-                          >
-                            {user.isActive ? 'Disable' : 'Enable'}
-                          </button>
-                        )}
+                      <td className="px-6 py-2.5 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          {hasPermission('users_roles.edit_users') && (
+                            <button
+                              onClick={() => setEditingUser(user)}
+                              className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
+                              title="Edit User"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                          )}
+                          {hasPermission('users_roles.edit_users') && (
+                            <button
+                              onClick={() => setAssigningAccess(user)}
+                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                              title="Access & Roles"
+                            >
+                              <Shield className="w-4 h-4" />
+                            </button>
+                          )}
+                          {hasPermission('users_roles.edit_users') && (
+                            <button
+                              onClick={() => setResettingPassword(user)}
+                              className="p-1.5 text-orange-600 hover:bg-orange-50 rounded transition-colors"
+                              title="Reset Password"
+                            >
+                              <Key className="w-4 h-4" />
+                            </button>
+                          )}
+                          {hasPermission('users_roles.deactivate_users') && (
+                            <button
+                              onClick={() => handleToggleStatus(user.id, user.isActive)}
+                              className={`p-1.5 rounded transition-colors ${
+                                user.isActive
+                                  ? 'text-red-600 hover:bg-red-50'
+                                  : 'text-green-600 hover:bg-green-50'
+                              }`}
+                              title={user.isActive ? 'Disable User' : 'Enable User'}
+                            >
+                              <Power className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -304,28 +363,32 @@ export default function AdminUsers() {
         />
       )}
 
-      {/* Assign Access Modal */}
-      {assigningAccess && (
-        <AssignAccessModal
-          user={assigningAccess}
+      {/* Combined Access & Role Assignment Modal */}
+      {(assigningAccess || assigningRole) && (
+        <AccessAndRoleModal
+          user={assigningAccess || assigningRole!}
           sites={sites}
           areas={areas}
           categories={categories}
-          onClose={() => setAssigningAccess(null)}
-          onAssignAccess={(updatedUser) => {
-            setUsers(users.map(u => u.id === updatedUser.id ? updatedUser : u))
+          initialTab={assigningAccess ? 'access' : 'roles'}
+          onClose={() => {
             setAssigningAccess(null)
+            setAssigningRole(null)
           }}
-        />
-      )}
-
-      {/* Assign Role Modal */}
-      {assigningRole && (
-        <AssignRoleModal
-          user={assigningRole}
-          onClose={() => setAssigningRole(null)}
-          onAssignRole={(updatedUser) => {
-            setUsers(users.map(u => u.id === updatedUser.id ? updatedUser : u))
+          onUpdate={async (updatedUser) => {
+            // Refetch role assignments for the updated user
+            try {
+              const rolesResponse = await apiClient.get(`/api/end-users/${updatedUser.id}/roles`)
+              const userWithRoles = {
+                ...updatedUser,
+                roleAssignments: rolesResponse.data || []
+              }
+              setUsers(users.map(u => u.id === updatedUser.id ? userWithRoles : u))
+            } catch (err) {
+              console.error(`Error fetching roles for user ${updatedUser.id}:`, err)
+              setUsers(users.map(u => u.id === updatedUser.id ? updatedUser : u))
+            }
+            setAssigningAccess(null)
             setAssigningRole(null)
           }}
         />
@@ -355,7 +418,6 @@ function CreateUserModal({ onClose, onCreateUser }: {
   onCreateUser: (user: EndUser) => void
 }) {
   const [formData, setFormData] = useState({
-    username: '',
     email: '',
     firstName: '',
     lastName: '',
@@ -369,12 +431,15 @@ function CreateUserModal({ onClose, onCreateUser }: {
     setLoading(true)
     setError(null)
 
+    console.log('[CreateUser] Submitting form data:', JSON.stringify(formData, null, 2))
+
     try {
       const response = await apiClient.post('/api/end-users', formData)
       onCreateUser(response.data.endUser)
     } catch (err: any) {
-      console.error('Error creating user:', err)
-      setError(err.response?.data?.error || 'Failed to create user')
+      console.error('[CreateUser] Error creating user:', err)
+      console.error('[CreateUser] Error message:', err.message)
+      setError(err.message || 'Failed to create user')
       setLoading(false)
     }
   }
@@ -423,26 +488,16 @@ function CreateUserModal({ onClose, onCreateUser }: {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Username *</label>
-              <input
-                type="text"
-                value={formData.username}
-                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                placeholder="john.smith"
-                required
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Email (Optional)</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Email (Username) *</label>
               <input
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="john@company.com"
+                placeholder="john.smith@company.com"
+                required
                 className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
+              <p className="text-xs text-slate-500 mt-1">Email will be used as the username for login</p>
             </div>
 
             <div>
@@ -475,7 +530,7 @@ function CreateUserModal({ onClose, onCreateUser }: {
               </button>
               <button
                 type="submit"
-                disabled={loading || !formData.firstName || !formData.lastName || !formData.username || !formData.password}
+                disabled={loading || !formData.firstName || !formData.lastName || !formData.email || !formData.password}
                 className="px-4 py-2 text-sm font-medium text-white bg-emerald-500 rounded-md hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Creating...' : 'Create User'}
@@ -656,7 +711,7 @@ function ResetPasswordModal({ user, onClose, onResetPassword }: {
 
           <div className="mb-4">
             <p className="text-sm text-slate-600">
-              Resetting password for: <strong>{user.firstName} {user.lastName}</strong> (@{user.username})
+              Resetting password for: <strong>{user.firstName} {user.lastName}</strong> ({user.email})
             </p>
           </div>
 
@@ -761,7 +816,7 @@ function AssignAccessModal({ user, sites, areas, categories, onClose, onAssignAc
 
           <div className="mb-4">
             <p className="text-sm text-slate-600">
-              Assigning access for: <strong>{user.firstName} {user.lastName}</strong> (@{user.username})
+              Assigning access for: <strong>{user.firstName} {user.lastName}</strong> ({user.email})
             </p>
           </div>
 
@@ -933,8 +988,8 @@ function AssignRoleModal({ user, onClose, onAssignRole }: {
 
           <div className="mb-4">
             <p className="text-sm text-slate-600 mb-3">
-              Current Role: <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(user.role)}`}>
-                {user.role}
+              Current Role: <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.role ? getRoleBadgeColor(user.role) : 'bg-slate-100 text-slate-600'}`}>
+                {user.role || 'No role assigned'}
               </span>
             </p>
           </div>
